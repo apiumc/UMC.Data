@@ -1,0 +1,120 @@
+﻿
+<link href="//www.365lu.cn/css/umc.css" rel="stylesheet" type="text/css" />
+<link href="//www.365lu.cn/css/umc.mobile.css" rel="stylesheet" type="text/css" />
+<script src="//www.365lu.cn/js/umc.database.js"></script>
+<script src="//www.365lu.cn/js/umc.grid.js"></script>
+<script src="//www.365lu.cn/js/umc.ui.js"></script>
+<script src="//www.365lu.cn/js/umc.dialog.js"></script>
+<script src="//www.365lu.cn/js/umc.page.js"></script>
+<script src="//www.365lu.cn/js/umc.mobile.js"></script> 
+
+</head>
+
+<body>
+
+    <script id="singleCategory" type="text/html">
+        <li>
+            <div class="img">
+                <a style="background-image:url({src})" {Click}></a>
+                <img alt="{name}" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" />
+            </div>
+            <div class="name">{name}</div>
+        </li>
+    </script>
+    <script id="tabs" type="text/html">
+        <header class="wdk-header header"></header>
+        <div class="wdk-tabs" style="position: relative; flex:1;overflow: auto">
+            <div class="weui_navbar">
+            </div>
+            <div class="wdk_tab_bd">
+            </div>
+        </div>
+    </script>
+    <script id="Category" type="text/html">
+        <div style="display: flex;height: 100%;flex-direction: column;">
+            <div class="header">
+                <h1>
+                    分类
+                </h1>
+            </div>
+            <div style="flex: 1; display: flex;overflow: auto;">
+                <div style="height: 100%; overflow-y: auto; width: 6.5em; font-size:12px" id="nav">
+                    <div class="weui_cells weui_cells_access">
+                    </div>
+                </div>
+                <div id="nav-items" style="flex: 1; height: 100%; overflow-y: auto;">
+                </div>
+            </div>
+        </div>
+    </script>
+
+
+    <div ui="main">
+        <div class="weui_tab">
+            <div class="weui_tab_bd">
+                <script type="text/html">
+                    <div class="wdk-tab-body-item">
+                    </div>
+                </script>
+            </div>
+            <footer class="weui_tabbar">
+                <script type="text/html">
+                    <a href="javascript:;" data-key="{key}" class="weui_tabbar_item">
+                        <div class="weui_tabbar_icon" data-icon="{icon}"></div>
+                        <p class="weui_tabbar_label">{text}</p>
+                    </a>
+                </script>
+            </footer>
+        </div>
+    </div>
+    <div ui="search">
+
+        <header class="header">
+            <a class="back"></a>
+            <h1 style="left: 50px; right: 30px;">
+                <form class="wdk-search">
+                    <input name="Keyword" type="search" class="weui_search_input" placeholder="搜索">
+                </form>
+            </h1>
+        </header>
+        <section>
+            <div class="searchCon">
+                <section></section>
+            </div>
+            <div class="searchResult">
+
+                <section></section>
+            </div>
+
+        </section>
+    </div>
+
+    <div class="wdk-sku">
+        <div class="wdk-sku-image">
+
+        </div>
+        <div class="wdk-sku-header">
+            <div class="wdk-sku-price">0.25</div>
+            <div class="wdk-sku-text"> </div>
+        </div>
+        <div class="wdk-sku-content">
+            <div class="wdk-sku-items"></div>
+            <div class="wdk-sku-qty">
+                <div>
+                    <a class="wdk-sku-reduce">-</a>
+                    <input value="1" type="number" min="1" style="width: 68px;">
+                    <a class="wdk-sku-add">+</a>
+                </div>
+            </div>
+
+        </div>
+        <div class="wdk-sku-footer">
+            <a ui-event="SKUOrder" class="weui_btn wdk-sku-order"></a>
+            <a ui-event="SKUBuy" style="margin-top:0px; color: #fff" class="weui_btn weui_btn_warn wdk-sku-buy"></a>
+
+        </div>
+    </div>
+    <div class="wdk-sku-mask"></div>
+</body>
+
+</html>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>UMC.Data</RootNamespace>
+    <AssemblyName>UMC.Data</AssemblyName>
+  </PropertyGroup>
+ 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\header.html" />
+    <EmbeddedResource Include="Resources\index.html" />
+    <EmbeddedResource Include="Resources\page.html" />
+  </ItemGroup>
+
+</Project>

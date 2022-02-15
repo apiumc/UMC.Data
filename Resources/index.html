@@ -1,0 +1,161 @@
+﻿<link href="//www.365lu.cn/css/umc.css" rel="stylesheet" type="text/css" />
+<script src="//www.365lu.cn/js/umc.date.js"></script>
+<script src="//www.365lu.cn/js/umc.database.js"></script>
+<script src="//www.365lu.cn/js/umc.grid.js"></script>
+<script src="//www.365lu.cn/js/umc.dialog.js"></script>
+<script src="//www.365lu.cn/js/umc.ui.js"></script>
+<script src="//www.365lu.cn/js/umc.page.js"></script>
+<script src="//www.365lu.cn/js/umc.paging.js"></script>
+<script src="//www.365lu.cn/js/umc.app.js"></script>
+
+
+<script>
+
+    ($ => {
+        $.Src = '//www.365lu.cn/v0.1/';
+        function page(v) {
+            return function (root) {
+                $('.pagination-container', root).paging(v.model, v.cmd, $('table tbody', root)).on('sort', root.find('.el-sort'));
+                $('table', root).thead();
+            }
+        };
+        $.page('debug', '开发调试', false);
+        $.UI.On('Setup', function () {
+
+            $.page('debug', 'API UMC安装向导', false);
+
+            var login = $('.login-container');
+            if (login.is('.hide') == false) {
+                login.cls('hide', 1);
+                $(window).on('page', 'debug', '');
+                $('#hamburger-container').click().off('click');
+            }
+
+        }).On('Cashier', function () {
+            $.script([location.origin, '/js/UMC.Conf.js'].join(''))
+                .wait(function () {
+                    $.UI.Command('Account', 'Menu', xhr => {
+                        var ps = $.pages || {};
+                        xhr.forEach(it => {
+                            var menu = it.menu || [];
+                            if (menu.length > 0) {
+                                var mn = $.menu(it.icon, it.text);
+                                menu.forEach(c => {
+                                    var k = c.url.substring(1);
+                                    if (ps[k]) {
+                                        mn.page(k, c.text, page(ps[k]), true);
+
+                                    } else {
+                                        var key = k.substring(0, k.indexOf('/'));
+                                        key ? $.page(key) : 0;
+                                        mn.page(k, c.text, true);
+                                    }
+                                });
+                            } else {
+                                var k = it.url.substring(1);
+                                if (ps[k]) {
+                                    $.page(k, it.text, page(ps[k]), it.icon);
+
+                                } else {
+                                    var key = k.substring(0, k.indexOf('/'));
+                                    key ? $.page(key) : 0;
+                                    $.page(k, it.text, it.icon);
+                                }
+
+                            }
+                        });
+                        $.menu();
+                        $(window).on('popstate');
+
+                    });
+                });
+
+        });
+    })(UMC);
+
+</script>
+</head>
+<body>
+    <div role="alert" class="el-message el-message--warning el-message-fade-leave el-message-fade-leave-active" style="z-index: 2100;">
+        <i class="el-message__icon el-icon-success"></i>
+        <p class="el-message__content"></p>
+    </div>
+    <div id="app">
+        <div class="sidebar-container">
+            <div class="sidebar-logo-container">
+
+                <a model="Account" cmd="Self" send="Cashier" class="box-card-component" data-name="吴">
+                    <img alt="" class="pan-thumb" />
+                </a><div class="umc-logo-name"></div>
+            </div>
+            <div class="el-scrollbar">
+                <div class="scrollbar-wrapper el-scrollbar__wrap">
+                    <div class="el-scrollbar__view">
+                        <ul id="menubar" class="el-menu" style="background-color: rgb(48, 65, 86);"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-container">
+            <div class="navbar">
+                <div id="hamburger-container" class="hamburger-container" style="padding: 0px 15px;"><svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="64" height="64" class="hamburger is-active"><path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM142.4 642.1L298.7 519a8.84 8.84 0 0 0 0-13.9L142.4 381.9c-5.8-4.6-14.4-.5-14.4 6.9v246.3a8.9 8.9 0 0 0 14.4 7z"></path></svg></div>
+                <div class="el-breadcrumb app-breadcrumb breadcrumb-container" id="breadcrumb-container">
+                    <span class="no-redirect">UMC</span>
+                </div>
+                <div class="right-menu" id="menu">
+
+                </div>
+                <div class="right-menu el-link-menu">
+                    <a ui-spa class="el-button help el-button--small">帮助文档</a>
+                </div>
+                <div class="right-menu">
+                    <div class="header-search right-menu-item show" id="header-search">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" id="icon-search" class="svg-icon search-icon"><path d="M124.884 109.812L94.256 79.166c-.357-.357-.757-.629-1.129-.914a50.366 50.366 0 0 0 8.186-27.59C101.327 22.689 78.656 0 50.67 0 22.685 0 0 22.688 0 50.663c0 27.989 22.685 50.663 50.656 50.663 10.186 0 19.643-3.03 27.6-8.201.286.385.557.771.9 1.114l30.628 30.632a10.633 10.633 0 0 0 7.543 3.129c2.728 0 5.457-1.043 7.543-3.115 4.171-4.157 4.171-10.915.014-15.073M50.671 85.338C31.557 85.338 16 69.78 16 50.663c0-19.102 15.557-34.661 34.67-34.661 19.115 0 34.657 15.559 34.657 34.675 0 19.102-15.557 34.661-34.656 34.661"></path></svg>
+                        <form class="el-select header-search-select el-select--small">
+                            <div class="el-input el-input--small el-input--suffix">
+                                <input type="search" autocomplete="off" placeholder="Search" class="el-input__inner">
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <section class="app-main"></section>
+
+        </div>
+    </div>
+    <div class="login-container">
+        <form class="el-form login-form el-card el-form--label-left" autocomplete="on">
+            <div class="loginFunc">
+                <div class="qrcode"></div>
+                <div class="account"></div>
+            </div>
+            <div class="qrcode_view">
+                <div style="width: 200px; height: 200px; margin: auto; position: relative;">
+                    <div class="context"></div>
+                    <div id="qrcode"></div>
+                </div>
+
+                <div style="color: #999;font-size: 14px; line-height: 50px;">
+                    请用 <a style="color: #337ab7;">支持的APP</a> 扫一扫登录
+                </div>
+            </div>
+            <div class="title-container">
+                <h3 class="title">
+                    登录
+                </h3>
+            </div>
+            <div class="el-form-item user el-input">
+                <input tabindex="1" type="text" required autocomplete="on" placeholder="账号" name="Username" class="el-input__inner">
+
+            </div>
+            <div class="el-form-item password el-input" tabindex="0">
+
+                <input tabindex="2" type="password" autocomplete="on" placeholder="密码" name="Password" class="el-input__inner">
+            </div> <button type="submit" class="el-button el-button--primary el-button--default" style="width: 100%; margin-bottom: 30px;">登录</button>
+        </form>
+    </div>
+</body>
+
+</html>
