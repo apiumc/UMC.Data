@@ -28,12 +28,25 @@ namespace UMC.Data
             get;
             private set;
         }
+        public string ClientIP
+        {
+            get;
+            private set;
+        }
         public string ContentType
         {
             get;
             set;
         }
         private Guid _user_id;
+
+        public Guid UserId
+        {
+            get
+            {
+                return _user_id;
+            }
+        }
         public Session(string sessionKey)
         {
             this.Key = sessionKey;
@@ -51,7 +64,9 @@ namespace UMC.Data
                 {
                     this.Value = UMC.Data.JSON.Deserialize<T>(se.Content);
                 }
-                _user_id = se.user_id ?? Guid.Empty;
+                this._user_id = se.user_id ?? Guid.Empty;
+                this.ModifiedTime = se.UpdateTime ?? DateTime.MinValue;
+                this.ClientIP = se.ClientIP;
 
             }
         }
@@ -69,33 +84,27 @@ namespace UMC.Data
         /// <summary>
         /// 提交更改
         /// </summary>
-        public void Commit()
+        public void Commit(string clientIp)
         {
-            this.Commit(this._user_id, false);
+            this.Commit(this._user_id, this.ContentType, false, clientIp);
         }
-        /// <summary>
-        /// 提交更改
-        /// </summary>
-        public void Commit(UMC.Security.Identity id)
-        {
-            this.Commit(id.Id ?? Guid.Empty, false);
-        }
+
         /// <summary>
         /// 提交更改,且消除用户contentType类型的Session
         /// </summary>
-        public void Commit(UMC.Security.Identity id, string contentType)
+        public void Commit(UMC.Security.Identity id, string contentType, string clientIp)
         {
-            this.ContentType = contentType;
-            this.Commit(id.Id ?? Guid.Empty, true);
+            //this.ContentType = contentType;
+            this.Commit(id.Id ?? Guid.Empty, contentType, true, clientIp);
         }
         public void Post(UMC.Security.Identity id, string contentType)
         {
-            this.ContentType = contentType;
+            //this.ContentType = contentType;
             var session = new Session
             {
                 UpdateTime = DateTime.Now,
                 user_id = id.Id.Value,
-                ContentType = this.ContentType ?? "Settings",
+                ContentType = contentType,// this.ContentType ?? "Settings",
                 SessionKey = this.Key
             };
             if (this.Value is string)
@@ -110,28 +119,29 @@ namespace UMC.Data
 
             DataFactory.Instance().Post(session);
         }
-        public void Commit(T value, UMC.Security.Identity id)
+        public void Commit(T value, UMC.Security.Identity id, string clientIp)
         {
             this.Value = value;
-            this.Commit(id, "Settings");
+            this.Commit(id, "Settings", clientIp);
         }
 
-        public void Commit(T value, Guid uid, bool unique)
+        public void Commit(T value, Guid uid, bool unique, string clientIp)
         {
             this.Value = value;
-            this.Commit(uid, unique);
+            this.Commit(uid, this.ContentType, unique, clientIp);
         }
         /// <summary>
         /// 提交更改
         /// </summary>
-        public void Commit(Guid uid, bool unique)
+        public void Commit(Guid uid, String contentType, bool unique, string clientIp)
         {
             var session = new Session
             {
                 UpdateTime = DateTime.Now,
                 user_id = uid,
-                ContentType = this.ContentType ?? "Settings",
-                SessionKey = this.Key
+                ContentType = contentType,//this.ContentType,
+                SessionKey = this.Key,
+                ClientIP = clientIp
             };
             if (this.Value is string)
             {
@@ -145,6 +155,7 @@ namespace UMC.Data
             if (unique)
             {
                 var v = DataFactory.Instance().Session(session.user_id.Value);
+
                 foreach (var k in v)
                 {
                     if (String.Equals(k.ContentType, this.ContentType))

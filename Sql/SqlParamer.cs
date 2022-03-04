@@ -17,17 +17,17 @@ namespace UMC.Data.Sql
             diction["UMC.Prefix"] = pfx;
             diction["UMC.GuidEmpty"] = System.Guid.Empty;
             diction["UMC.GuidNull"] = System.Guid.Empty;
-            var user = UMC.Security.Identity.Current;
-            if (user == null)
-            {
-                diction["WebADNuke.Username"] = string.Empty;
+            //var user = UMC.Security.Identity.Current;
+            //if (user == null)
+            //{
+            //    diction["WebADNuke.Username"] = string.Empty;
 
-            }
-            else
-            {
-                diction["UMC.UserId"] = user.Id;
-                diction["UMC.Username"] = user.Name;
-            }
+            //}
+            //else
+            //{
+            //    diction["UMC.UserId"] = user.Id;
+            //    diction["UMC.Username"] = user.Name;
+            //}
 
         }
         static string[] works = new String[] { "FROM", "JOIN", "UPDATE", "INSERT", "INTO", "DELETE" };

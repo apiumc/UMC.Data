@@ -45,6 +45,7 @@ namespace UMC.Web
             get;
             set;
         }
+        internal WebRuntime _runtime;
         public void Clear(WebEvent Event)
         {
             if ((this.ClientEvent & Event) == Event)
@@ -106,6 +107,7 @@ namespace UMC.Web
         }
 
         public bool IsApp { get; set; }
+        public UMC.Security.AccessToken Token { get; set; }
         public bool IsCashier { get; set; }
         public string UserAgent
         {
@@ -136,18 +138,19 @@ namespace UMC.Web
         public WebClient(Net.NetContext context, WebSession manager = null)
         {
             this._context = context;
+            this.Token = context.Token;
             this.Uri = context.Url;
             this.UserHostAddress = context.UserHostAddress;
             this.UrlReferrer = context.UrlReferrer;
             this.UserAgent = context.UserAgent;// System.Uri.UnescapeDataString(userAgent);
             this.Session = manager ?? WebSession.Instance();
-            this.InnerHeaders = UMC.Data.JSON.Deserialize<Hashtable>(this.Session.Header) ?? new Hashtable();
+            this.InnerHeaders = UMC.Data.JSON.Deserialize<Hashtable>(this.Session.Header(context.Token)) ?? new Hashtable();
             if (this.InnerHeaders.Contains("Click"))
             {
                 this.UIEvent = Data.JSON.Deserialize<UIClick>(this.InnerHeaders["Click"] as string);
 
             }
-            this.IsCashier = UMC.Security.Principal.Current.IsInRole(UMC.Security.Membership.UserRole);
+            this.IsCashier = context.Token.IsInRole(UMC.Security.Membership.UserRole);
             this.IsApp = CheckApp(this.UserAgent, this.Uri.Query);//.Contains("&_v=Debug");
 
         }
@@ -295,7 +298,7 @@ namespace UMC.Web
                 {
                     authType = WebRuntime.authKeys[model];
                 }
-                var user = UMC.Security.Identity.Current;
+                var user = this.Token.Identity();// UMC.Security.Identity.Current;
                 System.Security.Principal.IPrincipal principal = user;// WebADNuke.Security.Identity.Current;
 
 
@@ -323,7 +326,7 @@ namespace UMC.Web
                         else if (principal.IsInRole(Security.Membership.UserRole))
                         {
 
-                            if (UMC.Security.AuthManager.IsAuthorization(String.Format("{0}/{1}", model, cmd)))
+                            if (UMC.Security.AuthManager.IsAuthorization(principal, String.Format("{0}/{1}", model, cmd)))
                             {
                                 this.IsVerify = true;
                                 return true;
@@ -339,7 +342,7 @@ namespace UMC.Web
                         }
                         else if (user.IsAuthenticated)
                         {
-                            if (UMC.Security.AuthManager.IsAuthorization(String.Format("{0}/{1}", model, cmd)))
+                            if (UMC.Security.AuthManager.IsAuthorization(principal, String.Format("{0}/{1}", model, cmd)))
                             {
                                 this.IsVerify = true;
                                 return true;
@@ -428,7 +431,7 @@ namespace UMC.Web
             if (Verify(model, cmd) == false)
             {
                 return;
-            } 
+            }
             ClearUIEvent(model, cmd);
 
             Redirect(model, cmd, QueryString);
@@ -656,7 +659,7 @@ namespace UMC.Web
         void Send(System.Collections.IDictionary doc2)
         {
             this.IsEmptyReq = false;
-            var context = this.Context = doc2 == null ? WebRuntime.Start(this) : WebRuntime.ProcessRequest(doc2, this);
+            var context = doc2 == null ? WebRuntime.Start(this) : WebRuntime.ProcessRequest(doc2, this);
             var response = context.Response;
             if (IsEmptyReq)
             {
@@ -761,8 +764,10 @@ namespace UMC.Web
 
         public WebContext Context
         {
-            get;
-            private set;
+            get
+            {
+                return _runtime.Context;
+            }
         }
         public void WriteTo(System.IO.TextWriter writer, Action<Uri> redirect)
         {
@@ -802,18 +807,18 @@ namespace UMC.Web
             }
             if ((this.ClientEvent & WebEvent.AsyncDialog) == WebEvent.AsyncDialog)
             {
-                this.Session.Storage(this.InnerHeaders, this.Context);
+                this.Session.Storage(this.InnerHeaders, _runtime.Context);
 
             }
             else if (this.isSave || (this.ClientEvent & WebEvent.Header) == WebEvent.Header)
             {
-                this.Session.Storage(this.InnerHeaders, this.Context);
+                this.Session.Storage(this.InnerHeaders, _runtime.Context);
             }
 
             IDictionary<String, object> outer = null;
-            if (this.Context != null)
+            if (this._runtime != null)
             {
-                outer = this.Session.Outer(this, this.Context);
+                outer = this.Session.Outer(this, _runtime.Context);
             }
             writer.Write('{');
             writer.Write("\"ClientEvent\":{0}", Convert.ToInt32(this.ClientEvent));

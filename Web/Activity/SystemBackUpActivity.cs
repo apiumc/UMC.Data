@@ -19,7 +19,7 @@ namespace UMC.Web.Activity
             }
             var path = String.Format("BackUp/{0}/{1:yy-MM-dd}.umc", Utility.GetRoot(request.Url), DateTime.Now);
 
-            var file = UMC.Data.Utility.MapPath(String.Format("~App_Data/{0}", path));// Utility.GetRoot(request.Url), DateTime.Now));
+            var file = UMC.Data.Utility.MapPath(String.Format("App_Data/{0}", path));// Utility.GetRoot(request.Url), DateTime.Now));
 
             if (!System.IO.Directory.Exists(System.IO.Path.GetDirectoryName(file)))
             {

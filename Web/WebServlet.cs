@@ -17,31 +17,31 @@ namespace UMC.Web
     /// </summary>
     public class WebServlet : UMC.Net.INetHandler
     {
-        class SysSession : WebSession
-        {
-            static string _Header;
-            protected internal override void Check(WebContext context)
-            {
+        //class SysSession : WebSession
+        //{
+        //    static string _Header;
+        //    protected internal override void Check(WebContext context)
+        //    {
 
-                this.Header = _Header;
-            }
+        //        this.Header = _Header;
+        //    }
 
-            protected internal override bool IsAuthorization(string model, string command)
-            {
-                return true;
-            }
+        //    protected internal override bool IsAuthorization(string model, string command)
+        //    {
+        //        return true;
+        //    }
 
-            protected internal override IDictionary<string, object> Outer(WebClient client, WebContext context)
-            {
-                return null;
+        //    protected internal override IDictionary<string, object> Outer(WebClient client, WebContext context)
+        //    {
+        //        return null;
 
-            }
+        //    }
 
-            protected internal override void Storage(IDictionary header, WebContext context)
-            {
-                _Header = JSON.Serialize(header);
-            }
-        }
+        //    protected internal override void Storage(IDictionary header, WebContext context)
+        //    {
+        //        _Header = JSON.Serialize(header);
+        //    }
+        //}
         public static List<MappingAttribute> Mappings(int category)
         {
             return WebRuntime.Categorys.FindAll(m => m.Category == category);
@@ -64,14 +64,14 @@ namespace UMC.Web
         {
             if (System.IO.File.Exists(name))
             {
-                TransmitFile(context, name);
+                TransmitFile(context, name, true);
             }
             else
             {
                 context.StatusCode = 404;
             }
         }
-        protected void TransmitFile(UMC.Net.NetContext context, String file)
+        protected void TransmitFile(UMC.Net.NetContext context, String file, bool isCache)
         {
 
             var lastIndex = file.LastIndexOf('.');
@@ -137,18 +137,21 @@ namespace UMC.Web
                     context.ContentType = "application/octet-stream";
                     break;
             }
-            var fileInfo = new System.IO.FileInfo(file);
-
-            context.AddHeader("Last-Modified", fileInfo.LastWriteTimeUtc.ToString("r"));
-            var Since = context.Headers["If-Modified-Since"];
-            if (String.IsNullOrEmpty(Since) == false)
+            if (isCache)
             {
-                var time = Convert.ToDateTime(Since);
-                if (time >= fileInfo.LastWriteTimeUtc)
-                {
-                    context.StatusCode = 304;
-                    return;
+                var fileInfo = new System.IO.FileInfo(file);
 
+                context.AddHeader("Last-Modified", fileInfo.LastWriteTimeUtc.ToString("r"));
+                var Since = context.Headers["If-Modified-Since"];
+                if (String.IsNullOrEmpty(Since) == false)
+                {
+                    var time = Convert.ToDateTime(Since);
+                    if (time >= fileInfo.LastWriteTimeUtc)
+                    {
+                        context.StatusCode = 304;
+                        return;
+
+                    }
                 }
             }
             using (System.IO.FileStream stream = System.IO.File.OpenRead(file))
@@ -301,34 +304,34 @@ namespace UMC.Web
             }
             //try
             //{
-            switch (model)
-            {
-                case "System":
-                    switch (cmd)
-                    {
-                        case "Icon":
-                        case "TimeSpan":
-                        case "Start":
-                        case "Log":
-                        case "Mapping":
-                            session = new SysSession();
-                            break;
+            //switch (model)
+            //{
+            //    case "System":
+            //        switch (cmd)
+            //        {
+            //            case "Icon":
+            //            case "TimeSpan":
+            //            case "Start":
+            //            case "Log":
+            //            case "Mapping":
+            //                session = new SysSession();
+            //                break;
 
-                        case "Setup":
-                        case "Upgrade": 
+            //            //case "Setup":
+            //            //case "Upgrade":
 
-                            Authorization(context); 
-                            break;
-                        default:
-                            Authorization(context);
-                            break;
-                    }
-                    break;
-                default: 
-                    Authorization(context); 
-                    break;
-            }
-             
+            //            //    Authorization(context);
+            //            //    break;
+            //            //default:
+            //            //    Authorization(context);
+            //            //    break;
+            //        }
+            //        break;
+            //        //default:
+            //        //    break;
+            //}
+            Authorization(context);
+
             var client = new WebClient(context, session);
             if (String.IsNullOrEmpty(jsonp) == false && jsonp.StartsWith("app"))
             {
@@ -377,7 +380,7 @@ namespace UMC.Web
         }
         protected virtual void Authorization(UMC.Net.NetContext context)
         {
-            UMC.Net.NetContext.Authorization(context);
+            UMC.Net.NetContext.Authorization(context, false);
 
         }
         public static List<WebMeta> Auths()
@@ -530,7 +533,7 @@ namespace UMC.Web
                     case "GET":
                         if (System.IO.File.Exists(staticFile))
                         {
-                            TransmitFile(context, staticFile);
+                            TransmitFile(context, staticFile, true);
                             return;
                         }
                         break;
@@ -694,9 +697,9 @@ namespace UMC.Web
             }
             else
             {
-                context.Output.Write("    <script>WDK.POS.Config({posurl: ['");
+                context.Output.Write("    <script>UMC.UI.Config({posurl: ['");
                 context.Output.Write(root);
-                context.Output.WriteLine("/', WDK.cookie('device') || WDK.cookie('device', WDK.uuid())].join('')});");
+                context.Output.WriteLine("/', UMC.cookie('device') || UMC.cookie('device', UMC.uuid())].join('')});");
                 context.Output.WriteLine("</script>");
             }
             using (System.IO.Stream stream = typeof(WebServlet).Assembly

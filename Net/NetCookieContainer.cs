@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Linq;
 using UMC.Web;
 
 namespace UMC.Net
@@ -82,8 +83,7 @@ namespace UMC.Net
 
         public Cookie GetCookie(String name)
         {
-            //   var ts = UMC.Data.Utility.TimeSpan();
-
+          
             foreach (var ck in _cookies)
             {
                 var key = ck["name"];
@@ -94,14 +94,10 @@ namespace UMC.Net
                     if (ck.ContainsKey("expires"))
                     {
                         var expires = UMC.Data.Utility.IntParse(ck["expires"], 0);
-                        //if (expires > ts)
-                        //{
                         return new Cookie(ck["name"], ck["value"], path)
                         {
                             Expires = UMC.Data.Utility.TimeSpan(expires)
                         };
-
-                        //}
                     }
                     else
                     {
@@ -158,79 +154,49 @@ namespace UMC.Net
         #endregion
         public new void SetCookies(Uri uri, string cookieHeader)
         {
-            var path = "/";
-            var pathKey = "; Path=";
+            var cheades = cookieHeader.Split(';');
 
-            var pathIndex = cookieHeader.IndexOf(pathKey, StringComparison.CurrentCultureIgnoreCase);
-            if (pathIndex > 0)
+            var chv = cheades[0];
+            var vIndex = chv.IndexOf('=');
+            var name = chv.Substring(0, vIndex);
+
+            var cookie = new Cookie(chv.Substring(0, vIndex), chv.Substring(vIndex + 1));
+            for (var i = 1; i < cheades.Length; i++)
             {
-                var pa = cookieHeader.Substring(pathIndex + pathKey.Length);
-                var endIndex = pa.IndexOf(';');
-                if (endIndex > 0)
+                var sv = cheades[i].Split('=');
+                switch (sv[0].ToLower().Trim())
                 {
-                    path = pa.Substring(0, endIndex);
+                    case "path":
+                        cookie.Path = sv[1];
+                        break;
+                    case "expires":
+                        cookie.Expires = Convert.ToDateTime(sv[1]);
+                        break;
+                    case "max-age":
+                        cookie.Expires = DateTime.Now.AddSeconds(UMC.Data.Utility.IntParse(sv[1], 0));
+                        break;
                 }
-                else
-                {
-                    path = pa;
-                }
-
             }
-            else
+            if (String.IsNullOrEmpty(cookie.Path) == false)
             {
-                return;
-            }
-
-            var domainKey = "; Domain=";
-            var rul = new Uri(uri, path);
-
-            var domthIndex = cookieHeader.IndexOf(domainKey, StringComparison.CurrentCultureIgnoreCase);
-            if (domthIndex > 0)
-            {
-                var endIndex = cookieHeader.IndexOf(';', domthIndex + domainKey.Length);
-                if (endIndex > 0)
-                {
-                    cookieHeader = cookieHeader.Substring(0, domthIndex) + cookieHeader.Substring(endIndex);
-                }
-                else
-                {
-                    cookieHeader = cookieHeader.Substring(0, domthIndex);
-                }
-
-            }
-
-
-            base.SetCookies(rul, cookieHeader);
-            var cos = base.GetCookies(rul);
-
-            var vIndex = cookieHeader.IndexOf('=');
-            var name = cookieHeader.Substring(0, vIndex);
-
-            var cookie1 = cos[name];
-            if (cookie1 != null)
-            {
-                var ckey = String.Format("{0}{1}", cookie1.Name, cookie1.Path);
+                var ckey = String.Format("{0}{1}", cookie.Name, cookie.Path);
                 _cookies.RemoveAll(d => String.Equals(String.Format("{0}{1}", d["name"], d["path"]), ckey));
-                if (cookie1.Expires == DateTime.MinValue)
+                if (cookie.Expires == DateTime.MinValue)
                 {
-                    _cookies.Add(new WebMeta().Put("name", name, "value", cookie1.Value, "path", cookie1.Path));
+                    _cookies.Add(new WebMeta().Put("name", name, "value", cookie.Value, "path", cookie.Path));
 
                 }
                 else
                 {
-                    if (cookie1.Expires > cookie1.TimeStamp)
-                    {
-                        _cookies.Add(new WebMeta().Put("name", name, "value", cookie1.Value, "path", cookie1.Path).Put("expires", UMC.Data.Utility.TimeSpan(cookie1.Expires).ToString()));
-
-
-                    }
+                    _cookies.Add(new WebMeta().Put("name", name, "value", cookie.Value, "path", cookie.Path).Put("expires", UMC.Data.Utility.TimeSpan(cookie.Expires).ToString()));
                 }
+            }
 
-                if (this.action != null)
-                {
-                    this.action(cookie1);
-                }
+            if (this.action != null)
+            {
+                this.action(cookie);
             }
         }
     }
 }
+

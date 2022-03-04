@@ -12,11 +12,6 @@ namespace UMC.Security
     public class AccessToken
     {
 
-        public String ContentType
-        {
-            get;
-            set;
-        }
         private AccessToken()
         {
             this.Data = new Hashtable();
@@ -48,7 +43,7 @@ namespace UMC.Security
         public Guid? Id
         {
             get;
-            set;
+           internal set;
         }
         /// <summary>
         /// 角色
@@ -73,35 +68,11 @@ namespace UMC.Security
             private set;
         }
         /// <summary>
-        /// 客户端的唯一标识
-        /// </summary>
-        public static Guid? Token
-        {
-            get
-            {
-                var data = System.Threading.Thread.CurrentPrincipal as UMC.Security.Principal;
-                if (data != null)
-                {
-                    var ticket = data.SpecificData as AccessToken;
-                    if (ticket != null)
-                    {
-                        return ticket.Id;
-                    }
-                }
-                return null;
-            }
-        }
-        /// <summary>
         /// 退出
         /// </summary>
-        public static void SignOut()
+        public void SignOut(String clientIp)
         {
-            var data = System.Threading.Thread.CurrentPrincipal as UMC.Security.Principal;
-            var ticket = data.SpecificData;//as AccessToken;
-            if (ticket != null)
-            {
-                Login(UMC.Security.Identity.Create(ticket.Id.Value, "?", String.Empty), ticket.Id.Value, ticket.ContentType);
-            }
+            Login(UMC.Security.Identity.Create(this.Id.Value, "?", String.Empty), null, clientIp);
         }
         public AccessToken Put(string key, string value)
         {
@@ -126,10 +97,10 @@ namespace UMC.Security
         /// <param name="deviceType">设备类型</param>
         /// <param name="timeout">过期时间</param>
         /// <returns></returns>
-        public static AccessToken Create(Identity user, Guid deviceId, String deviceType, int timeout)
+        public static AccessToken Create(Identity user, Guid deviceId, int timeout)
         {
             var auth = new AccessToken();
-            auth.ContentType = deviceType;
+            //auth.ContentType = deviceType;
             auth.Timeout = timeout;
             auth.Id = deviceId;
             auth.Username = user.Name;
@@ -180,15 +151,18 @@ namespace UMC.Security
         /// <summary>
         /// 提交修改访问票据
         /// </summary>
-        public void Commit()
+        public void Commit(String clientIP)
+        {
+            this.Commit(null, clientIP);
+        }
+        public void Commit(string deviceType, String clientIP)
         {
             this.ActiveTime = UMC.Data.Utility.TimeSpan();///
 
             if (this.UId.HasValue)
             {
                 var sesion = new Session<UMC.Security.AccessToken>(this, this.Id.ToString());
-                sesion.ContentType = this.ContentType;
-                sesion.Commit(this.UId.Value, false);
+                sesion.Commit(this.UId.Value, deviceType, false, clientIP);
             }
         }
         public UMC.Security.Identity Identity()
@@ -206,6 +180,10 @@ namespace UMC.Security
                 this.UId = this.Id;
 
                 return UMC.Security.Identity.Create(this.Id.Value, "?", Alias);
+            }
+            if (this.UId == this.Id)
+            {
+                return UMC.Security.Identity.Create(this.UId ?? this.Id.Value, "?", Alias);
             }
             switch (this.Username)
             {
@@ -246,9 +224,9 @@ namespace UMC.Security
         /// <param name="user"></param>
         /// <param name="deviceId">设备令牌ID</param>
         /// <returns></returns>
-        public static AccessToken Login(Identity user, Guid deviceId, string client)
+        public void Login(Identity user, string deviceType, String clientIp)
         {
-            return Login(user, deviceId, 30 * 60, client);
+            Login(user, 30 * 60, deviceType, false, clientIp);
 
         }
         /// <summary>
@@ -259,9 +237,9 @@ namespace UMC.Security
         /// <param name="deviceType">设备类型</param>
         /// <param name="unqiue">记录登录</param>
         /// <returns></returns>
-        public static AccessToken Login(Identity user, Guid deviceId, string deviceType, bool unqiue)
+        public void Login(Identity user, string deviceType, bool unqiue, String clientIp)
         {
-            return Login(user, deviceId, unqiue ? 0 : 30 * 60, deviceType, unqiue);
+            Login(user, unqiue ? 0 : 30 * 60, deviceType, unqiue, clientIp);
         }
         /// <summary>
         /// 登录
@@ -272,66 +250,65 @@ namespace UMC.Security
         /// <param name="deviceType">设置类型</param>
         /// <param name="unqiue">记录登录</param>
         /// <returns></returns>
-        public static AccessToken Login(Identity user, Guid deviceId, int timeout, string deviceType, bool unqiue)
+        public void Login(Identity user, int timeout, string deviceType, bool unqiue, String clientIp)
         {
-            if (unqiue)
+            var auth = this;
+            //auth.ContentType = deviceType;
+            auth.Timeout = timeout;
+            auth.Username = user.Name;
+            auth.UId = user.Id;
+            auth.ActiveTime = UMC.Data.Utility.TimeSpan();
+            auth.Roles = null;
+
+            switch (user.Name)
             {
-                var token = Create(user, deviceId, deviceType, timeout);
+                case "#":
+                case "?":
+                    if (String.IsNullOrEmpty(user.Alias) == false)
+                    {
+                        auth.Data["#"] = user.Alias;
+                    }
+                    break;
+                default:
 
-                var sesion = new Session<UMC.Security.AccessToken>(token, token.Id.ToString());
+                    auth.Data["#"] = user.Alias;
+                    if (user.Roles != null)
+                    {
+                        auth.Roles = String.Join(",", user.Roles);
+                    }
+                    break;
+            }
 
-                sesion.ContentType = deviceType;
+            var sesion = new Session<UMC.Security.AccessToken>(this, this.Id.ToString());
+            sesion.Commit(this.UId.Value, deviceType, unqiue, clientIp);
 
-                sesion.Commit(user, deviceType);
+        }
 
-                UMC.Security.Principal.Create(user, token);
-                return token;
+        public string Get(string key)
+        {
+
+            return this.Data[key] as string;
+
+        }
+        public bool IsInRole(string role)
+        {
+            if (String.IsNullOrEmpty(this.Roles))
+            {
+                return false;
+            }
+            var roles = $",{this.Roles},";
+
+            if (roles.Contains($",{Membership.AdminRole},"))
+            {
+                return true;
+            }
+            else if (roles.Contains($",{role},"))
+            {
+                return true;
             }
             else
             {
-                return Login(user, deviceId, timeout, deviceType);
-            }
-
-        }
-        public static AccessToken Login(Identity user, Guid deviceId, int timeout, string contentType)
-        {
-            UMC.Security.Principal.Create(user);
-
-            var auth = Create(user, deviceId, contentType, timeout);
-            auth.Commit();
-
-            //UMC.Security.Membership.Instance().Activation(auth);
-            return auth;
-
-        }
-        public static string Get(string key)
-        {
-            var data = System.Threading.Thread.CurrentPrincipal as UMC.Security.Principal;
-            if (data != null)
-            {
-                var ticket = data.SpecificData;// as AccessToken;
-                if (ticket != null)
-                {
-                    return ticket.Data[key] as string;
-                }
-            }
-            return null;
-        }
-        public static void Set(string key, string value)
-        {
-            AccessToken.Current.Put(key, value).Commit();
-
-        }
-        public static AccessToken Current
-        {
-            get
-            {
-                var data = System.Threading.Thread.CurrentPrincipal as UMC.Security.Principal;
-                if (data == null)
-                {
-                    return null;
-                }
-                return data.SpecificData as AccessToken;
+                return false;
             }
         }
 

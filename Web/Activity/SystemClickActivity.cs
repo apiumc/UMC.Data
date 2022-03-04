@@ -25,7 +25,7 @@ namespace UMC.Web.Activity
             }
             if (hashtable != null)
             {
-                var user = UMC.Security.Identity.Current;
+                var user = this.Context.Token.Identity();
                 if (user.IsAuthenticated == false)
                 {
                     response.Redirect("Account", "Login");

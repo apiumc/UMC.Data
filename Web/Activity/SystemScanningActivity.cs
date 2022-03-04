@@ -32,7 +32,7 @@ namespace UMC.Web.Activity
                             this.OpenUrl(url);
                         }
                         var query = url.Query.Substring(1);
-                        var user = UMC.Security.Identity.Current;
+                        var user = this.Context.Token.Identity(); //UMC.Security.Identity.Current;
                         if (user.IsAuthenticated == false)
                         {
                             this.Context.Response.Redirect("Account", "Login");
@@ -55,7 +55,7 @@ namespace UMC.Web.Activity
                                 fm.Submit("确认登录", this.Context.Request, "PC.Login");
                                 return fm;
                             });
-                            var sesion = UMC.Data.DataFactory.Instance().Session(UMC.Security.AccessToken.Token.ToString());
+                            var sesion = UMC.Data.DataFactory.Instance().Session( Context.Token.Id.ToString());
 
                             if (sesion != null)
                             {

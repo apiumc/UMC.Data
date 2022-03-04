@@ -13,6 +13,17 @@ namespace UMC.Security
         {
             this._AppKey = appKey;
         }
+        private Principal(Principal principal)
+        {
+            if (principal != null)
+            {
+                this._AppKey = principal._AppKey;
+                this._Items = new System.Collections.Hashtable(principal._Items);
+                this._identity = principal._identity;
+                //this._SpecificData = principal._SpecificData;
+                this.Status = principal.Status;
+            }
+        }
         System.Collections.Hashtable _Items = new System.Collections.Hashtable();
         /// <summary>
         /// 线程会话存储器
@@ -29,10 +40,11 @@ namespace UMC.Security
         {
             get
             {
+                //System.Threading.Tasks.Task.CurrentId
                 var t = System.Threading.Thread.CurrentPrincipal as Principal;
                 if (t == null)
                 {
-                    t = new Principal(Guid.Empty);
+                    System.Threading.Thread.CurrentPrincipal = t = new Principal(Guid.Empty);
                 }
                 return t;
             }
@@ -57,27 +69,10 @@ namespace UMC.Security
         /// <returns></returns>
         public static Principal Create(Guid? appKey)
         {
-            var princ = System.Threading.Thread.CurrentPrincipal as Principal;
-            if (princ == null)
-            {
-                System.Threading.Thread.CurrentPrincipal = princ = new Principal(appKey);
-            }
+
+            var princ = new Principal(System.Threading.Thread.CurrentPrincipal as Principal);
             princ._AppKey = appKey;
-            return princ;
-        }
-        /// <summary>
-        /// 创建线程关联的状态
-        /// </summary>
-        /// <param name="root"></param>
-        /// <returns></returns>
-        public static Principal Create(string root)
-        {
-            var princ = System.Threading.Thread.CurrentPrincipal as Principal;
-            if (princ == null)
-            {
-                System.Threading.Thread.CurrentPrincipal = princ = new Principal(null);
-            }
-            princ.Root = root;
+            System.Threading.Thread.CurrentPrincipal = princ;
             return princ;
         }
         /// <summary>
@@ -87,12 +82,9 @@ namespace UMC.Security
         /// <returns></returns>
         public static Principal Create(long status)
         {
-            var princ = System.Threading.Thread.CurrentPrincipal as Principal;
-            if (princ == null)
-            {
-                System.Threading.Thread.CurrentPrincipal = princ = new Principal(null);
-            }
+            var princ = new Principal(System.Threading.Thread.CurrentPrincipal as Principal);
             princ.Status = status;
+            System.Threading.Thread.CurrentPrincipal = princ;
             return princ;
         }
         /// <summary>
@@ -100,24 +92,14 @@ namespace UMC.Security
         /// </summary>
         /// <param name="identity"></param>
         /// <returns></returns>
-        public static Principal Create(System.Security.Principal.IIdentity identity)
-        {
-            var princ = System.Threading.Thread.CurrentPrincipal as Principal;
-            if (princ == null)
-            {
-                System.Threading.Thread.CurrentPrincipal = princ = new Principal(null);
-            }
-            princ._identity = identity;
-            return princ;
-        }
-        /// <summary>
-        /// 平台路径
-        /// </summary>
-        public string Root
-        {
-            get;
-            private set;
-        }
+        //public static Principal Create(System.Security.Principal.IIdentity identity)
+        //{
+
+        //    var princ = new Principal(System.Threading.Thread.CurrentPrincipal as Principal);
+        //    princ._identity = identity;
+        //    System.Threading.Thread.CurrentPrincipal = princ;
+        //    return princ;
+        //}
         /// <summary>
         /// 状态
         /// </summary>
@@ -132,17 +114,15 @@ namespace UMC.Security
         /// <param name="identity"></param>
         /// <param name="token">用户凭证</param>
         /// <returns></returns>
-        public static Principal Create(System.Security.Principal.IIdentity identity, UMC.Security.AccessToken token)
-        {
-            var princ = System.Threading.Thread.CurrentPrincipal as Principal;
-            if (princ == null)
-            {
-                System.Threading.Thread.CurrentPrincipal = princ = new Principal(null);
-            }
-            princ._identity = identity;
-            princ._SpecificData = token;
-            return princ;
-        }
+        //public static Principal Create(System.Security.Principal.IIdentity identity, UMC.Security.AccessToken token)
+        //{
+        //    var princ = new Principal(System.Threading.Thread.CurrentPrincipal as Principal);
+        //    princ._identity = identity;
+        //    princ._SpecificData = token;
+        //    System.Threading.Thread.CurrentPrincipal = princ;
+
+        //    return princ;
+        //}
         /// <summary>
         /// 
         /// </summary>
@@ -158,17 +138,17 @@ namespace UMC.Security
                 return this._AppKey;
             }
         }
-        UMC.Security.AccessToken _SpecificData;
-        /// <summary>
-        ///  身份数据
-        /// </summary>
-        public UMC.Security.AccessToken SpecificData
-        {
-            get
-            {
-                return _SpecificData;
-            }
-        }
+        //UMC.Security.AccessToken _SpecificData;
+        ///// <summary>
+        /////  身份数据
+        ///// </summary>
+        //public UMC.Security.AccessToken Token
+        //{
+        //    get 
+        //    {
+        //        return _SpecificData;
+        //    }
+        //}
         #region IPrincipal 成员
 
         /// <summary>

@@ -14,6 +14,19 @@ namespace UMC.Net
 
     public class NetHttpResponse : HttpMimeBody, IDisposable
     {
+
+        static byte[] HEAD = System.Text.Encoding.ASCII.GetBytes("HEAD");
+        static bool ChechHead(byte[] header)
+        {
+            for (var i = 0; i < HEAD.Length; i++)
+            {
+                if (header[i] != HEAD[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
         HttpWebRequest webRequest;
 
         string m_ProtocolVersion;
@@ -24,11 +37,13 @@ namespace UMC.Net
                 return m_ProtocolVersion;
             }
         }
+        public bool IsHead => _isHead;
+        bool _isHead;
         static void Http(byte[] header, byte[] body, HttpWebRequest webRequest, Action<NetHttpResponse> prepare)
         {
             NetHttpResponse httpResponse = new NetHttpResponse(prepare);
             httpResponse.webRequest = webRequest;
-
+            httpResponse._isHead = ChechHead(header);
             NetProxy.Instance(webRequest.RequestUri, webRequest.ReadWriteTimeout, body.Length, tcp =>
            {
                tcp.Before(httpResponse);
@@ -49,6 +64,7 @@ namespace UMC.Net
         {
             NetHttpResponse httpResponse = new NetHttpResponse(prepare);
             httpResponse.webRequest = webRequest;
+            httpResponse._isHead = ChechHead(header);
 
             NetProxy.Instance(webRequest.RequestUri, webRequest.ReadWriteTimeout, context.ContentLength ?? 0, tcp =>
              {
@@ -95,6 +111,7 @@ namespace UMC.Net
         {
             NetHttpResponse httpResponse = new NetHttpResponse(prepare);
             httpResponse.webRequest = webRequest;
+            httpResponse._isHead = ChechHead(header);
 
             NetProxy.Instance(webRequest.RequestUri, webRequest.ReadWriteTimeout, webRequest.ContentLength, tcp =>
             {
@@ -145,6 +162,7 @@ namespace UMC.Net
 
             });
             httpResponse.webRequest = webRequest;
+            httpResponse._isHead = ChechHead(header);
             NetProxy.Instance(webRequest.RequestUri, webRequest.ReadWriteTimeout, webRequest.ContentLength, tcp =>
             {
                 tcp.Before(httpResponse);
@@ -357,6 +375,7 @@ namespace UMC.Net
 
             NetHttpResponse httpResponse = new NetHttpResponse(prepare);
             httpResponse.webRequest = webRequest;
+            httpResponse._isHead = ChechHead(header);
 
             NetProxy.Instance(webRequest.RequestUri, webRequest.ReadWriteTimeout, 0, tcp =>
             {
@@ -586,6 +605,11 @@ namespace UMC.Net
                 this.IsHttpFormatError = true;
                 this.ReceiveError(ex);
             }
+            if (this._isHead)
+            {
+                this.IsHttpFormatError = true;
+                //this.IsReadBody = true;
+            }
         }
         Action<NetHttpResponse> Prepare;
         public bool IsReadBody
@@ -717,31 +741,38 @@ namespace UMC.Net
         Object _sysc = new object();
         public void ReadAsData(Net.NetReadData readData)
         {
-            if (IsReadBody == false)
+            if (this._isHead)
             {
-                IsReadBody = true;
-                lock (_sysc)
-                {
-                    if (this._isOK)
-                    {
-                        while (this._body.Count > 0)
-                        {
-                            byte[] d = _body.Dequeue();
-                            readData(d, 0, d.Length);
-
-                        }
-                        readData(new byte[0], this.IsHttpFormatError ? -1 : 0, 0);
-                    }
-                    else
-                    {
-                        this._readData = readData;
-                    }
-                }
-
+                readData(new byte[0], 0, 0);
             }
             else
             {
-                readData(new byte[0], this.IsHttpFormatError ? -1 : 0, 0);
+                if (IsReadBody == false)
+                {
+                    IsReadBody = true;
+                    lock (_sysc)
+                    {
+                        if (this._isOK)
+                        {
+                            while (this._body.Count > 0)
+                            {
+                                byte[] d = _body.Dequeue();
+                                readData(d, 0, d.Length);
+
+                            }
+                            readData(new byte[0], this.IsHttpFormatError ? -1 : 0, 0);
+                        }
+                        else
+                        {
+                            this._readData = readData;
+                        }
+                    }
+
+                }
+                else
+                {
+                    readData(new byte[0], this.IsHttpFormatError ? -1 : 0, 0);
+                }
             }
         }
 

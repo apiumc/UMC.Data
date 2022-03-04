@@ -252,31 +252,31 @@ namespace UMC.Web
         /// </summary>
         /// <param name="asyncId">异步值Id</param>
         /// <param name="dialog">对话框</param>
-        public static string AsyncDialog(string asyncId, UIDialog dialog)
+        public static string AsyncDialog(WebContext context, string asyncId, UIDialog dialog)
         {
-            return GetAsyncValue(asyncId, true, aid => dialog, false) as string;
+            return GetAsyncValue(context, asyncId, true, aid => dialog, false) as string;
         }
         /// <summary>
         /// 获取异步对话框的值
         /// </summary>
         /// <param name="asyncId">异步值Id</param>
         /// <param name="callback">对话框回调方法</param>
-        public static string AsyncDialog(string asyncId, AsyncDialogCallback callback)
+        public static string AsyncDialog(WebContext context, string asyncId, AsyncDialogCallback callback)
         {
-            return GetAsyncValue(asyncId, true, callback, false) as string;
+            return GetAsyncValue(context, asyncId, true, callback, false) as string;
         }
         //public static string (string asyncId, AsyncDialogCallback callback)
         //{
         //    return GetAsyncValue(asyncId, true, callback, false) as string;
         //}
-        public static string AsyncDialog(string asyncId, AsyncDialogCallback callback, bool IsDialogValue)
+        public static string AsyncDialog(WebContext context, string asyncId, AsyncDialogCallback callback, bool IsDialogValue)
         {
-            return GetAsyncValue(asyncId, true, callback, IsDialogValue) as string;
+            return GetAsyncValue(context, asyncId, true, callback, IsDialogValue) as string;
         }
         internal const string KEY_DIALOG_ID = "KEY_DIALOG_ID";
-        protected static object GetAsyncValue(string asyncId, bool singleValue, AsyncDialogCallback callback, bool IsDialog)
+        protected static object GetAsyncValue(WebContext context, string asyncId, bool singleValue, AsyncDialogCallback callback, bool IsDialog)
         {
-            var context = WebContext.Current;
+            //var context = WebContext.Current;
             var request = context.Request;
             var response = context.Response;
             if (singleValue)
@@ -299,7 +299,7 @@ namespace UMC.Web
                     {
                         if (IsDialog == false)
                         {
-                            if (WebRuntime.Current.Items.ContainsKey(context.CurrentActivity) == false)
+                            if (context.runtime.Items.ContainsKey(context.CurrentActivity) == false)
                             {
                                 value = request.SendValue;
                             }
@@ -333,9 +333,9 @@ namespace UMC.Web
                             request.Arguments[(asyncId)] = value;
                             return value;
                         }
-                        else if (WebRuntime.Current.Items.ContainsKey(context.CurrentActivity) == false)
+                        else if (context.runtime.Items.ContainsKey(context.CurrentActivity) == false)
                         {
-                            WebRuntime.Current.Items.Add(context.CurrentActivity, true);
+                            context.runtime.Items.Add(context.CurrentActivity, true);
                             request.Arguments[(asyncId)] = value;
                             return value;
                         }
@@ -377,7 +377,7 @@ namespace UMC.Web
                         }
                     }
 
-                    if (rValue == null || WebRuntime.Current.Items.ContainsKey(context.CurrentActivity))
+                    if (rValue == null || context.runtime.Items.ContainsKey(context.CurrentActivity))
                     {
                         var dialog = callback(asyncId);
                         dialog.AsyncId = asyncId;
@@ -391,7 +391,7 @@ namespace UMC.Web
                     }
                     else
                     {
-                        WebRuntime.Current.Items.Add(context.CurrentActivity, true);
+                        context.runtime.Items.Add(context.CurrentActivity, true);
                         request.Arguments.Set(asyncId, rValue); ;
                     }
                 }
@@ -401,15 +401,15 @@ namespace UMC.Web
         /// <summary>
         /// 初始化
         /// </summary>
-        protected virtual void Initialization() { }
+        protected virtual void Initialization(WebContext context) { }
 
         /// <summary>
         /// 转化异步参数
         /// </summary>
         /// <returns></returns>
-        internal WebMeta ToAsyncArgs()
+        internal WebMeta ToAsyncArgs(WebContext context)
         {
-            Initialization();
+            Initialization(context);
             if (!String.IsNullOrEmpty(this.DefaultValue))
             {
                 this.config["DefaultValue"] = DefaultValue;
@@ -425,9 +425,9 @@ namespace UMC.Web
         /// <summary>
         /// 用异步对话框
         /// </summary>
-        public static string AsyncDialog(string valueKey, string title)
+        public static string AsyncDialog(WebContext context, string valueKey, string title)
         {
-            return AsyncDialog(valueKey, anyc => new UITextDialog { Title = title });
+            return AsyncDialog(context, valueKey, anyc => new UITextDialog { Title = title });
         }
 
 

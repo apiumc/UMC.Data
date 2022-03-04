@@ -32,7 +32,7 @@ namespace UMC.Web
         //    get;
         //    set;
         //}
-        protected override void Initialization()
+        protected override void Initialization(WebContext context)
         {
             //var ds = new List<POSMeta>();
             //for (var i = 0; i < _nSource.Count; i++)
@@ -93,13 +93,13 @@ namespace UMC.Web
                 return "CheckboxGroup";
             }
         }
-        protected override void Initialization()
+        protected override void Initialization(Web.WebContext context)
         {
             if (String.IsNullOrEmpty(this.DefaultValue) == false)
             {
                 this.Config["DefaultValue"] = this.DefaultValue;
             }
-            base.Initialization();
+            base.Initialization(context);
         }
     }
 }

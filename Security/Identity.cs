@@ -51,20 +51,9 @@ namespace UMC.Security
 
         }
 
-
-        public static Identity Current
-        {
-            get
-            {
-                var pri = System.Threading.Thread.CurrentPrincipal;
-                if (pri != null)
-                {
-                    return pri.Identity as UMC.Security.Identity;
-                }
-                return null;// System.Threading.Thread.CurrentPrincipal.Identity as UMC.Security.Identity;
-            }
-        }
-
+        /// <summary>
+        /// 用户ID
+        /// </summary>
         public virtual Guid? Id
         {
             get;
@@ -105,16 +94,7 @@ namespace UMC.Security
                     return true;
                 }
                 else
-                {
-                    var t = AccessToken.Token;
-                    if (t.HasValue)
-                    {
-                        if (this.Id.HasValue && t.Value != this.Id.Value)
-                        {
-                            return true;
-                        }
-                    }
-
+                { 
                     return false;
                 }
             }

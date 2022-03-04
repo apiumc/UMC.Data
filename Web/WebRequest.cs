@@ -25,7 +25,7 @@ namespace UMC.Web
             {
                 if (_IsMaster.HasValue == false)
                 {
-                    _IsMaster = UMC.Security.Principal.Current.IsInRole(UMC.Security.Membership.AdminRole);
+                    _IsMaster = client.Token.IsInRole(UMC.Security.Membership.AdminRole);
                 }
                 return _IsMaster.Value;
             }

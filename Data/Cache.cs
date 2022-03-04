@@ -59,58 +59,58 @@ namespace UMC.Data
             }
             public void Put(int[] indexs, object[] value)
             {
-                lock (this)
+                //lock (this)
+                //{
+                object[] kva = new object[indexs.Length];
+                for (var i = 0; i < indexs.Length; i++)
                 {
-                    object[] kva = new object[indexs.Length];
-                    for (var i = 0; i < indexs.Length; i++)
-                    {
-                        kva[i] = value[indexs[i]];
-                    }
-                    for (var i = 0; i < _size; i++)
-                    {
-                        var val = _values[i];
-                        if (Check(indexs, kva, val))
-                        {
-
-                            for (int c = 0; c < value.Length; c++)
-                            {
-                                var oc = value[c];
-                                if (oc != null)
-                                {
-                                    val[c] = oc;
-                                }
-                            }
-                            return;
-                        }
-                    }
-                    if (_size >= _values.Length)
-                    {
-                        var v = new object[_values.Length + 1][];
-                        Array.Copy(_values, v, _size);
-                        _values = v;
-
-                    }
-                    _values[_size] = value;
-                    _size++;
+                    kva[i] = value[indexs[i]];
                 }
+                for (var i = 0; i < _size; i++)
+                {
+                    var val = _values[i];
+                    if (Check(indexs, kva, val))
+                    {
+
+                        for (int c = 0; c < value.Length; c++)
+                        {
+                            var oc = value[c];
+                            if (oc != null)
+                            {
+                                val[c] = oc;
+                            }
+                        }
+                        return;
+                    }
+                }
+                if (_size >= _values.Length)
+                {
+                    var v = new object[_values.Length + 1][];
+                    Array.Copy(_values, v, _size);
+                    _values = v;
+
+                }
+                _values[_size] = value;
+                _size++;
+                //}
 
 
             }
             public Object[] Remove(int[] indexs, object[] value)
             {
-                lock (this)
+                //lock (this)
+                //{
+                for (var i = 0; i < _size; i++)
                 {
-                    for (var i = 0; i < _size; i++)
+                    var v = _values[i];
+                    if (Check(indexs, value, v))
                     {
-                        var v = _values[i];
-                        if (Check(indexs, value, v))
-                        {
-                            _size--;
-                            Array.Copy(_values, i + 1, _values, i, _size - i);
-                            return v;
-                        }
+                        _size--;
+                        Array.Copy(_values, i + 1, _values, i, _size - i);
+                        return v;
                     }
                 }
+                //}
                 return null;
 
             }
@@ -254,23 +254,23 @@ namespace UMC.Data
         void Delete(String[] fields, Object[] values)
         {
 
-            System.Threading.Tasks.Task.Factory.StartNew(() =>
-            {
-                this.persistent.Delete(fields, values);
-            });
+            //System.Threading.Tasks.Task.Factory.StartNew(() =>
+            //{
+            this.persistent.Delete(fields, values);
+            //});
         }
         void Put(String[] fields, Object[] values, T value)
         {
 
-            System.Threading.Tasks.Task.Factory.StartNew(() =>
+            //System.Threading.Tasks.Task.Factory.StartNew(() =>
+            //{
+            var v = this.persistent.Put(fields, values, value);
+            if (v != null && Object.ReferenceEquals(value, v) == false)
             {
-                var v = this.persistent.Put(fields, values, value);
-                if (v != null && Object.ReferenceEquals(value, v) == false)
-                {
-                    this.Register(this.Split(v));
-                }
+                this.Register(this.Split(v));
+            }
 
-            });
+            //});
 
         }
 

@@ -165,9 +165,9 @@ namespace UMC.Web
         {
             get; set;
         }
-        protected override void Initialization()
+        protected override void Initialization(WebContext context)
         {
-            var context = WebContext.Current;
+            //var context = WebContext.Current;
             var request = context.Request;
             var response = context.Response;
             if (String.IsNullOrEmpty(this.AsyncId) == false && request.Items.ContainsKey(this.AsyncId))
@@ -242,7 +242,7 @@ namespace UMC.Web
                 }
                 this.Config.Set("Header", p);
             }
-            base.Initialization();
+            base.Initialization(context);
         }
     }
     //public abstract class UITableDialog : POSDialog

@@ -16,11 +16,16 @@ namespace UMC.Web
         {
             this.Headers = new WebMeta();
         }
-
+        WebClient _client;
         internal protected virtual void OnInit(WebClient client)
         {
-
+            this._client = client;
         }
+        //internal WebContext Context
+        //{
+        //    get;
+        //    private set;
+        //}
 
         /// <summary>
         /// 参数信息
@@ -111,7 +116,7 @@ namespace UMC.Web
         /// <param name="dialog">对话框</param>
         public void Redirect(string mode, string cmd, UMC.Web.UIDialog dialog)
         {
-            this.Headers.Set(EventType.AsyncDialog, dialog.ToAsyncArgs());
+            this.Headers.Set(EventType.AsyncDialog, dialog.ToAsyncArgs(_client.Context));
             this.ClientEvent |= WebEvent.AsyncDialog;
             this.ClientRedirect = new ClientRedirect { Model = mode, Command = cmd };
             this.End();
@@ -134,7 +139,7 @@ namespace UMC.Web
         }
         internal void RedirectDialog(string mode, string cmd, UMC.Web.UIDialog dialog, WebRequest req)
         {
-            this.Headers.Set(EventType.AsyncDialog, dialog.ToAsyncArgs());
+            this.Headers.Set(EventType.AsyncDialog, dialog.ToAsyncArgs(_client.Context));
 
             if (req.Items.Count > 0)
             {

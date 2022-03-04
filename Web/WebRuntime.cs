@@ -19,11 +19,18 @@ namespace UMC.Web
         }
         public WebRuntime(WebClient client, System.Collections.IDictionary header)
         {
+            client._runtime = this;
+            this.Client = client;
             this.Request = client.Session.Request();
             this.Request.OnInit(client, header);
             this.Response = client.Session.Response();
             this.Response.OnInit(client);
-            this.Client = client;
+
+
+            this.Context = client.Session.Context();
+            this.Context.Init(this);
+            this.Context.OnInit(client);
+
         }
         ~WebRuntime()
         {
@@ -106,16 +113,7 @@ namespace UMC.Web
         public static WebContext Start(WebClient client)
         {
             WebRuntime runtime = new WebRuntime(client, new Hashtable());
-            Current = runtime;
-            runtime.Context = client.Session.Context();
-            try
-            {
-                runtime.Context.Init(runtime);
-                runtime.Context.OnInit(client);
-            }
-            catch (UMC.Web.WebAbortException)
-            {
-            }
+
 
             return runtime.Context;
 
@@ -123,27 +121,9 @@ namespace UMC.Web
         public static WebContext ProcessRequest(System.Collections.IDictionary header, WebClient client)
         {
             WebRuntime runtime = new WebRuntime(client, header);
-
-            var value = System.Threading.Thread.CurrentPrincipal;
-            runtime.DoFactory(value);
+            runtime.Do();
             return runtime.Context;
 
-        }
-        [ThreadStatic]
-        static WebRuntime _Current;
-        /// <summary>
-        /// 当前的处理工厂
-        /// </summary>
-        public static WebRuntime Current
-        {
-            get
-            {
-                return _Current;
-            }
-            private set
-            {
-                _Current = value;
-            }
         }
 
         public static List<String> RegisterCls()
@@ -215,7 +195,7 @@ namespace UMC.Web
         public WebContext Context
         {
             get;
-            set;
+            private set;
         }
 
         public WebActivity CurrentActivity
@@ -364,7 +344,7 @@ namespace UMC.Web
         }
         class MappingActivityFactory : IWebFactory
         {
-           // int index = 0;
+            // int index = 0;
 
             WebFlow IWebFactory.GetFlowHandler(string mode)
             {
@@ -425,10 +405,6 @@ namespace UMC.Web
         void DoFactory()
         {
 
-            Context = this.Client.Session.Context();
-
-            Context.Init(this);
-            Context.OnInit(this.Client);
             var factorys = new List<IWebFactory>();
 
 
@@ -473,10 +449,10 @@ namespace UMC.Web
             }
             Context.Complete();
         }
-        protected void DoFactory(System.Security.Principal.IPrincipal pi)
+        void Do()
         {
-            System.Threading.Thread.CurrentPrincipal = pi;
-            WebRuntime.Current = this;
+
+
 
             if ((this.Response.ClientEvent & WebEvent.Error) == WebEvent.Error)
             {
@@ -534,6 +510,7 @@ namespace UMC.Web
             get;
             private set;
         }
+
         public WebResponse Response
         {
             get;

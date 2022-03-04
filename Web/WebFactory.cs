@@ -96,7 +96,7 @@ namespace UMC.Web
                     sb.Append(Data.Utility.GetRoot(req.Url));
                     sb.Append("/");
                 }
-                sb.Append(Utility.Guid(AccessToken.Token.Value));
+                sb.Append(Utility.Guid(this.Context.Token.Id.Value));
                 sb.Append("/");
                 if (req.Headers.ContainsKey(EventType.Dialog))
                 {
@@ -177,7 +177,7 @@ namespace UMC.Web
 
                 }
 
-                var user = UMC.Security.Identity.Current;
+                var user = this.Context.Token.Identity(); //UMC.Security.Identity.Current;
                 var webRequest = new Uri(sb.ToString()).WebRequest();
                 webRequest.UserAgent = req.UserAgent;
 

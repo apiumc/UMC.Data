@@ -23,7 +23,7 @@ namespace UMC.Net
         public static readonly byte[] HeaderEnd = new byte[] { 13, 10, 13, 10 };
 
 
-        static readonly byte[][] HTTPMethods = new byte[10][];
+        internal static readonly byte[][] HTTPMethods = new byte[10][];
         static HttpMimeBody()
         {
             HTTPMethods[0] = System.Text.Encoding.ASCII.GetBytes("GET");

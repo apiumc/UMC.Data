@@ -98,7 +98,7 @@ namespace UMC.Web
         }
         protected string AsyncDialog(string asyncId, string deValue)
         {
-            return UIDialog.AsyncDialog(asyncId, k => this.DialogValue(deValue));
+            return UIDialog.AsyncDialog(this.Context, asyncId, k => this.DialogValue(deValue));
         }
 
         protected UIDialog DialogValue(string value)//, WebADNuke.Web.AsyncDialogCallback callback, bool isDialog)
@@ -118,21 +118,21 @@ namespace UMC.Web
         /// <returns></returns>
         protected string AsyncDialog(string asyncId, UMC.Web.AsyncDialogCallback callback)
         {
-            return UMC.Web.UIDialog.AsyncDialog(asyncId, callback);
+            return UMC.Web.UIDialog.AsyncDialog( this.Context, asyncId, callback);
         }
         /// <summary>
         /// 表单对话框
         /// </summary>
         protected WebMeta AsyncDialog(UMC.Web.AsyncDialogFormCallback callback, string asyncId)
         {
-            return UIFormDialog.AsyncDialog(asyncId, d => callback(asyncId));
+            return UIFormDialog.AsyncDialog(this.Context, asyncId, d => callback(asyncId));
         }
         /// <summary>
         /// 表单对话框
         /// </summary>
         protected WebMeta AsyncDialog(string asyncId, UMC.Web.AsyncDialogFormCallback callback)
         {
-            return UIFormDialog.AsyncDialog(asyncId, d => callback(asyncId));
+            return UIFormDialog.AsyncDialog(this.Context, asyncId, d => callback(asyncId));
         }
         /// <summary>
         /// 提示框,并终止响应且返回客户端

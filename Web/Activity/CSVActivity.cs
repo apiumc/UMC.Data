@@ -106,7 +106,7 @@ namespace UMC.Web.Activity
                 this.Prompt("无有效的字段");
             }
 
-            var userName = Utility.GetUsername();
+            var userName = this.Context.Token.Username;// Utility.GetUsername();
 
             var log = new CSV.Log(Utility.GetRoot(request.Url), Key, String.Format("开始{0}", this.Title ?? "文本数据导入"));
             Data.Reflection.Start(() =>

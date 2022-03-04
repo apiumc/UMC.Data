@@ -28,10 +28,10 @@ namespace UMC.Web
         {
             get { return "Confirm"; }
         }
-        protected override void Initialization()
+        protected override void Initialization(WebContext context)
         {
             this.Config["DefaultValue"] = this.DefaultValue ?? "YES";
-            base.Initialization();
+            base.Initialization(context);
         }
     }
 }

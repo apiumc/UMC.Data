@@ -28,17 +28,17 @@ namespace UMC.Security
         /// </summary>
         /// <param name="wildcard">通配符</param>
         /// <returns></returns>
-        public static Boolean IsAuthorization(string wildcard)
-        {
-            return IsAuthorization(System.Threading.Thread.CurrentPrincipal, wildcard);
-        }
-        /// <summary>
-        /// 批量验证权限
-        /// </summary>
-        public static bool[] IsAuthorization(params string[] wildcards)
-        {
-            return IsAuthorization(System.Threading.Thread.CurrentPrincipal, wildcards);
-        }
+        //public static Boolean IsAuthorization(string wildcard)
+        //{
+        //    return IsAuthorization(System.Threading.Thread.CurrentPrincipal, wildcard);
+        //}
+        ///// <summary>
+        ///// 批量验证权限
+        ///// </summary>
+        //public static bool[] IsAuthorization(params string[] wildcards)
+        //{
+        //    return IsAuthorization(System.Threading.Thread.CurrentPrincipal, wildcards);
+        //}
         /// <summary>
         /// 批量验证权限
         /// </summary>
@@ -105,9 +105,9 @@ namespace UMC.Security
         /// 验证权限符SId
         /// </summary>
         /// <param name="sid">权限符SId</param>
-        public static bool IsAuthorization(Guid sid)
+        public static bool IsAuthorization(System.Security.Principal.IPrincipal principal, Guid sid)
         {
-            return IsAuthorization(sid.ToString());
+            return IsAuthorization(principal, sid.ToString());
         }
         /// <summary>
         /// 验证权限符SId,如果返回大于0或通过，如果等于0表示没有设置过，如果小于0表示没有通过
@@ -138,9 +138,9 @@ namespace UMC.Security
         /// </summary>
         /// <param name="sourceKey">源权限SID</param>
         /// <param name="destKey">目标权限SID</param>
-        public static bool CopyAuthorize(string sourceKey, string destKey)
+        public static bool CopyAuthorize(System.Security.Principal.IPrincipal principal, string sourceKey, string destKey)
         {
-            AuthManager wMger = new AuthManager(System.Threading.Thread.CurrentPrincipal);
+            AuthManager wMger = new AuthManager(principal);
             return wMger.Copy(sourceKey, destKey);
         }
         /// <summary>
@@ -161,7 +161,7 @@ namespace UMC.Security
         public static bool IsAuthorization(System.Security.Principal.IPrincipal principal, string wildcard)
         {
 
-            return IsAuthorization(System.Threading.Thread.CurrentPrincipal, new string[] { wildcard })[0];
+            return IsAuthorization(principal, new string[] { wildcard })[0];
 
         }
 

@@ -88,9 +88,9 @@ namespace UMC.Web
         /// <param name="asyncId">异步值Id</param>
         /// <param name="callback">对话框回调方法</param>
         /// <returns></returns>
-        public static new WebMeta AsyncDialog(string asyncId, AsyncDialogCallback callback)
+        public static new WebMeta AsyncDialog(WebContext context, string asyncId, AsyncDialogCallback callback)
         {
-            return GetAsyncValue(asyncId, false, callback, false) as WebMeta;
+            return GetAsyncValue(context, asyncId, false, callback, false) as WebMeta;
         }
         /// <summary>
         /// 增加地址输入框
@@ -815,7 +815,7 @@ namespace UMC.Web
             submit = new WebMeta("model", request.Model, "cmd", request.Command, "text", btnName).Put("send", pa);
             Submit(btnName);
         }
-        protected override void Initialization()
+        protected override void Initialization(WebContext context)
         {
             if (submit != null)
             {

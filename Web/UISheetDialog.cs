@@ -26,7 +26,7 @@ namespace UMC.Web
                 return _nSource;
             }
         }
-        protected override void Initialization()
+        protected override void Initialization(WebContext context)
         {
             this.Config.GetDictionary()["DataSource"] = _nSource;
         }

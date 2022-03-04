@@ -35,21 +35,21 @@ namespace UMC.Web.Activity
 
                 var ui = UISection.Create(title);
                 var webr = UMC.Data.WebResource.Instance();
-                var appKey = UMC.Security.Principal.Current.AppKey ?? Guid.Empty;
-                if (appKey == Guid.Empty)
-                {
+                //var appKey = UMC.Security.Principal.Current.AppKey ?? Guid.Empty;
+                //if (appKey == Guid.Empty)
+                //{
                     var appID = webr.Provider["appId"];
                     var appSecret = webr.Provider["appSecret"];
                     ui.AddCell("授权码", String.IsNullOrEmpty(appID) ? "去授权" : "去查看", new UIClick().Send(request.Model, "License")); 
                     ui.AddCell("检验码", String.IsNullOrEmpty(appSecret) ? "未设置" : "已设置", new UIClick().Send(request.Model, "License"));
 
                     ui.NewSection().AddCell('\uea04', "安全码", "用于应用交互效验", new UIClick(new WebMeta().Put(d, "APPSECRET")).Send(request.Model, request.Command));
-                }
-                else
-                {
-                    ui.AddCell("授权码", UMC.Data.Utility.Guid(appKey))
-                    .AddCell('\uea04', "安全码", "用于应用交互效验", new UIClick(new WebMeta().Put(d, "APPSECRET")).Send(request.Model, request.Command));
-                }
+                //}
+                //else
+                //{
+                //    ui.AddCell("授权码", UMC.Data.Utility.Guid(appKey))
+                //    .AddCell('\uea04', "安全码", "用于应用交互效验", new UIClick(new WebMeta().Put(d, "APPSECRET")).Send(request.Model, request.Command));
+                //}
 
 
                 var cfg2 = DataFactory.Instance().Configuration("UMC") ?? new ProviderConfiguration();

@@ -4,6 +4,7 @@ using System.Text;
 using System.IO;
 using System.Collections;
 using UMC.Data;
+using UMC.Net;
 
 namespace UMC.Web
 {
@@ -17,9 +18,11 @@ namespace UMC.Web
             public WebSessioner()
             {
 
-                this.Header = Security.AccessToken.Get("WebSession");
             }
-
+            public override string Header(UMC.Security.AccessToken token)
+            {
+                return token.Get("WebSession");
+            }
             protected internal override void Check(WebContext context)
             {
 
@@ -38,7 +41,7 @@ namespace UMC.Web
 
             protected internal override void Storage(IDictionary header, WebContext context)
             {
-                Security.AccessToken.Set("WebSession", JSON.Serialize(header));
+                context.Token.Put("WebSession", JSON.Serialize(header)).Commit(context.Request.UserHostAddress);
 
 
             }
@@ -79,11 +82,8 @@ namespace UMC.Web
 
 
 
-        public virtual string Header
-        {
-            get;
-            protected set;
-        }
+        public abstract string Header(UMC.Security.AccessToken token);
+
         public virtual WebRequest Request()
         {
             return new WebRequest();

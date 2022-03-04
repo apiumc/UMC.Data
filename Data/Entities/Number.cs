@@ -68,6 +68,11 @@ namespace UMC.Data.Entities
             set;
         }
         public string DeviceToken { get; set; }
+
+        public string ClientIP
+        {
+            get; set;
+        }
     }
     public class Cache
     {

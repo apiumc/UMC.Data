@@ -65,6 +65,11 @@ namespace UMC.Net
         {
             get;
         }
+        public virtual UMC.Security.AccessToken Token
+        {
+            get;
+            protected set;
+        }
         public abstract NameValueCollection Form
         {
             get;
@@ -115,15 +120,15 @@ namespace UMC.Net
         }
         public abstract void Redirect(string url);
 
-        public static void Authorization(UMC.Net.NetContext context)
+        public static void Authorization(UMC.Net.NetContext context, bool isNewCookie)
         {
             var sessionKey = context.Cookies[Security.Membership.SessionCookieName];
-            //var cookie = context.Headers["Cookie"] ?? "";
-            //var sessionKey = String.Empty;
-            string contentType = "Client/" + context.UserHostAddress;
+
+            string contentType = "Desktop";
+            var isApp = false;
             if (UMC.Data.Utility.IsApp(context.UserAgent))
             {
-                contentType = "App/" + context.UserHostAddress;
+                contentType = "App";
             }
 
             var ns = new NameValueCollection();
@@ -153,20 +158,21 @@ namespace UMC.Net
                     var id = ns["umc-request-user-id"];
                     var name = ns["umc-request-user-name"];
                     var alias = ns["umc-request-user-alias"];
-                    var sid = Data.Utility.Guid("umc.request" + name, true).Value;
 
+                    var sid = new Guid(UMC.Data.Utility.MD5("umc.request", id, name, roles, alias));
 
                     var session = new Session<Security.AccessToken>(sid.ToString());
                     if (session.Value != null)
                     {
-                        var passDate = Data.Utility.TimeSpan();
                         var auth = session.Value;
-                        if (((auth.ActiveTime ?? 0) + auth.Timeout) > passDate)
+                        var passDate = Data.Utility.TimeSpan();
+
+                        if (((auth.ActiveTime ?? 0) + auth.Timeout) < passDate)
                         {
-                            var tity = auth.Identity();
-                            if (String.Equals(tity.Name, name))
+                            var iden = auth.Identity();
+                            if (String.Equals(iden.Name, name))
                             {
-                                UMC.Security.Principal.Create(tity, auth);
+                                context.Token = auth;
                                 return;
                             }
                         }
@@ -177,8 +183,9 @@ namespace UMC.Net
                     {
                         user = UMC.Security.Identity.Create(Utility.Guid(id) ?? Utility.Guid(name, true).Value, name, alias, String.IsNullOrEmpty(roles) ? new String[0] : roles.Split(','));
                     }
-
-                    UMC.Security.Principal.Create(user, UMC.Security.AccessToken.Create(user, sid, contentType, 3600));
+                    var token = UMC.Security.AccessToken.Create(user, sid, 3600);
+                    token.Commit(contentType, context.UserHostAddress);
+                    context.Token = token;
 
                     return;
                 }
@@ -189,13 +196,62 @@ namespace UMC.Net
                 var uid = Guid.NewGuid();
                 sessionKey = Utility.Guid(uid);
                 context.AppendCookie(Security.Membership.SessionCookieName, sessionKey);
-                var user = new UMC.Security.Guest(uid);
 
-                UMC.Security.Principal.Create(user, UMC.Security.AccessToken.Create(user, uid, contentType, 0));
+                context.Token = UMC.Security.AccessToken.Create(new UMC.Security.Guest(uid), uid, 0);
+                return;
+
+
+            }
+            else if (isNewCookie)
+            {
+                var deviceId = Data.Utility.Guid(sessionKey, true).Value;
+
+                context.Token = Security.AccessToken.Create(new UMC.Security.Guest(deviceId), deviceId, 0);
+                return;
             }
             else
             {
-                UMC.Security.Membership.Instance().Authorization(sessionKey, contentType);
+                var deviceId = Data.Utility.Guid(sessionKey, true).Value;
+
+                var session = new Session<Security.AccessToken>(deviceId.ToString());
+                if (session.Value != null && session.Value.Id == deviceId)
+                {
+
+                    var auth = session.Value;
+                    auth.Id = deviceId;
+                    //auth.ContentType = contentType;
+                    if (auth.UId != deviceId)
+                    {
+                        if (isApp == false && context.UserHostAddress.IndexOf('/') > 0 && String.Equals(session.ClientIP, context.UserHostAddress) == false)
+                        {
+                            context.Token = Security.AccessToken.Create(new UMC.Security.Guest(deviceId), deviceId, 0); ;
+                            return;
+                        }
+                    }
+                    var passDate = Data.Utility.TimeSpan();
+                    if (auth.Timeout > 0)
+                    {
+                        if (((auth.ActiveTime ?? 0) + auth.Timeout) < passDate)
+                        {
+                            var at = UMC.Security.AccessToken.Create(new UMC.Security.Guest(deviceId), deviceId, 0);
+                            at.Commit(contentType, context.UserHostAddress);
+                            context.Token = at;
+
+                            return;
+
+                        }
+                    }
+                    if (auth.ActiveTime < passDate - 600)
+                    {
+                        auth.Commit(contentType, context.UserHostAddress);
+                    }
+                    context.Token = auth;
+                    return;
+                }
+
+                context.Token = Security.AccessToken.Create(new UMC.Security.Guest(deviceId), deviceId, 0); ;
+
+
             }
 
         }

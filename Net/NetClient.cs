@@ -243,6 +243,7 @@ namespace UMC.Net
             webRequest.Method = context.HttpMethod;
             switch (webRequest.Method)
             {
+                case "HEAD":
                 case "GET":
                 case "DELETE":
                     return NetHttpResponse.Create(webRequest, webRequest.Method);
@@ -455,10 +456,15 @@ namespace UMC.Net
                 switch (key.ToLower())
                 {
                     case "content-type":
-                    case "content-length":
                     case "server":
                     case "connection":
+                        break;
                     case "transfer-encoding":
+                    case "content-length":
+                        if (webResponse.IsHead)
+                        {
+                            context.AddHeader(key, value);
+                        }
                         break;
                     case "set-cookie":
                         var vs = new List<String>(value.Split(';'));
@@ -482,9 +488,12 @@ namespace UMC.Net
                         break;
                 }
             }
-            if (webResponse.ContentLength > 0)
+            if (webResponse.IsHead == false)
             {
-                context.ContentLength = webResponse.ContentLength;
+                if (webResponse.ContentLength > 0)
+                {
+                    context.ContentLength = webResponse.ContentLength;
+                }
             }
         }
         public static void Transfer(this NetHttpResponse webResponse, Net.NetContext context)

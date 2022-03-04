@@ -43,8 +43,6 @@ namespace UMC.Web.Activity
             foreach (var initer in Initializers)
             {
                 Hask[initer.ProviderName] = UMC.Data.Database.Instance(initer.ProviderName).DbProvider;
-
-
             }
             Data.Reflection.Start(() =>
             {
@@ -70,9 +68,7 @@ namespace UMC.Web.Activity
                             }
                         }
 
-                    } 
-
-
+                    }
                     log.End("检测升级已完成");
 
                 }

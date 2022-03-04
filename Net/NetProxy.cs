@@ -10,6 +10,39 @@ using System.Net.NetworkInformation;
 
 namespace UMC.Net
 {
+
+    public class NetPool
+    {
+        ConcurrentStack<NetProxy> _pool = new ConcurrentStack<NetProxy>();
+        public ConcurrentStack<NetProxy> Pool
+        {
+            get
+            {
+                return _pool;
+            }
+        }
+        /// <summary>
+        /// 连接错误
+        /// </summary>
+        public int BurstError
+        {
+            get;
+            set;
+        }
+        public bool IsRestart
+        {
+            get; set;
+        }
+        //public DateTime LastErrorTime
+        //{
+        //    get; set;
+        //}
+        //public DateTime RestartTime
+        //{
+        //    get; set;
+        //}
+    }
+
     /// <summary>
     /// HTTP请求代码与HttpClient机制增加了端口复用
     /// </summary>
@@ -81,12 +114,12 @@ namespace UMC.Net
         /// <summary>
         /// 连接池
         /// </summary>
-        static ConcurrentDictionary<string, ConcurrentStack<NetProxy>> _pool = new ConcurrentDictionary<string, ConcurrentStack<NetProxy>>();
+        static ConcurrentDictionary<string, NetPool> _pool = new ConcurrentDictionary<string, NetPool>();
 
         /// <summary>
         /// 连接池
         /// </summary>
-        public static ConcurrentDictionary<string, ConcurrentStack<NetProxy>> Pool
+        public static ConcurrentDictionary<string, NetPool> Pool
         {
             get
             {
@@ -106,19 +139,19 @@ namespace UMC.Net
             var key = uri.Authority;
             if (length < 102400)
             {
-                ConcurrentStack<NetProxy> queue;
+                NetPool queue;
                 if (_pool.TryGetValue(key, out queue))
                 {
                     NetProxy tc;
 
-                    if (queue.TryPop(out tc))
+                    if (queue.Pool.TryPop(out tc))
                     {
                         if (tc.Active())
                         {
                             return tc;
                         }
                     }
-                    while (queue.TryPop(out tc))
+                    while (queue.Pool.TryPop(out tc))
                     {
                         tc.Dispose();
                     }
@@ -137,7 +170,7 @@ namespace UMC.Net
             var ps = _pool.Values.ToArray();
             foreach (var p in ps)
             {
-                var ks = p.ToArray();
+                var ks = p.Pool.ToArray();
                 foreach (var k in ks)
                 {
                     k.Active();
@@ -158,12 +191,13 @@ namespace UMC.Net
             {
                 if (length < 102400)
                 {
-                    ConcurrentStack<NetProxy> queue;
+                    NetPool queue;
                     if (_pool.TryGetValue(key, out queue))
                     {
+
                         NetProxy tc;
 
-                        if (queue.TryPop(out tc))
+                        if (queue.Pool.TryPop(out tc))
                         {
                             if (tc.Active())
                             {
@@ -171,11 +205,19 @@ namespace UMC.Net
                                 return;
                             }
                         }
-                        while (queue.TryPop(out tc))
+                        if (queue.BurstError > 10)
                         {
-                            tc.Dispose();
-                        }
+                            if (queue.IsRestart)
+                            {
+                                error(new System.Net.WebException($"{key}现不能正常提供服务"));
+                                return;
+                            }
+                            else
+                            {
+                                queue.IsRestart = true;
+                            }
 
+                        }
                     }
                 }
             }
@@ -229,6 +271,10 @@ namespace UMC.Net
             }
             catch (Exception ex)
             {
+
+                NetPool pool = Pool.GetOrAdd(this.key, r => new NetPool());
+                pool.IsRestart = false;
+                pool.BurstError++;
                 result.error(ex);
             }
 
@@ -284,6 +330,10 @@ namespace UMC.Net
                         }
                         catch (Exception ex)
                         {
+                            NetPool pool = Pool.GetOrAdd(this.key, r => new NetPool());
+                            pool.IsRestart = false;
+                            pool.BurstError++;
+
                             callback.error(ex);
 
                         }
@@ -298,6 +348,11 @@ namespace UMC.Net
             }
             catch (Exception ex)
             {
+                NetPool pool = Pool.GetOrAdd(this.key, r => new NetPool());
+
+                pool.IsRestart = false;
+                pool.BurstError++;
+
                 callback.error(ex);
             }
         }
@@ -366,19 +421,23 @@ namespace UMC.Net
         {
             if (disposed == false)
             {
-
-
                 if (this.mimeBody.IsClose || this.mimeBody.IsHttpFormatError)
                 {
+                    NetPool pool;
+                    if (Pool.TryGetValue(this.key, out pool))
+                    {
+                        pool.BurstError = 0;
+                    }
+
                     this.Dispose();
                 }
                 else
                 {
                     this._keepAlive = this.mimeBody.KeepAlive;
-                    var qu = Pool.GetOrAdd(this.key, k => new ConcurrentStack<NetProxy>());
-
+                    var qu = Pool.GetOrAdd(this.key, k => new NetPool());
+                    qu.BurstError = 0;
                     this.activeTime = DateTime.Now;
-                    qu.Push(this);
+                    qu.Pool.Push(this);
                     this.mimeBody = null;
                 }
             }
@@ -444,20 +503,6 @@ namespace UMC.Net
 
 
         }
-        //public static Web.WebMeta Pool()
-        //{
-        //    var data = new Web.WebMeta();
-
-        //    lock (_pool)
-        //    {
-        //        var p = _pool.GetEnumerator();
-        //        while (p.MoveNext())
-        //        {
-        //            data.Put(p.Current.Key, p.Current.Value.Count);
-        //        }
-        //    }
-        //    return data;
-        //}
 
         HttpMimeBody mimeBody;
         public override void Receive()
@@ -495,11 +540,11 @@ namespace UMC.Net
         }
         void Reset()
         {
-            ConcurrentStack<NetProxy> queue;
+            NetPool queue;
             if (Pool.TryGetValue(key, out queue))
             {
                 NetProxy tc;
-                while (queue.TryPop(out tc))
+                while (queue.Pool.TryPop(out tc))
                 {
                     tc.Dispose();
                 }
@@ -557,6 +602,12 @@ namespace UMC.Net
                 }
                 else
                 {
+                    NetPool pool;
+                    if (Pool.TryGetValue(this.key, out pool))
+                    {
+                        pool.IsRestart = false;
+                        pool.BurstError++;
+                    }
                     this.Dispose();
                     m.ReceiveException(_error ?? new ArgumentOutOfRangeException("请求长度不正常"));
 
@@ -596,7 +647,6 @@ namespace UMC.Net
                 }
                 catch (Exception ex)
                 {
-
                     this.Dispose();
                     m.ReceiveException(ex);
 
@@ -619,12 +669,22 @@ namespace UMC.Net
             }
             catch (Exception ex)
             {
+                NetPool pool;
+                if (Pool.TryGetValue(this.key, out pool))
+                {
+                    pool.BurstError++;
+                }
                 this.Dispose();
                 m.ReceiveException(ex);
                 return;
             }
             if (l == 0)
             {
+                NetPool pool;
+                if (Pool.TryGetValue(this.key, out pool))
+                {
+                    pool.BurstError++;
+                }
                 this.Dispose();
                 m.ReceiveException(new Exception("接口数据长度为零"));
                 return;
@@ -672,6 +732,11 @@ namespace UMC.Net
             }
             catch (Exception ex)
             {
+                NetPool pool;
+                if (Pool.TryGetValue(this.key, out pool))
+                {
+                    pool.BurstError++;
+                }
                 this.Dispose();
                 m.ReceiveException(ex);
 

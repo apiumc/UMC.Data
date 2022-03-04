@@ -30,7 +30,6 @@ namespace UMC.Web
         public void Close()
         {
             this.Response.ClientEvent |= (WebEvent.Close | WebEvent.Reset);
-            UMC.Security.AccessToken.SignOut();
             this.End();
         }
         /// <summary>
@@ -189,13 +188,13 @@ namespace UMC.Web
         /// <summary>
         /// 当前的会话上下文
         /// </summary>
-        public static WebContext Current
-        {
-            get
-            {
-                return WebRuntime.Current.Context;//as POSContext;
-            }
-        }
+        //public static WebContext Current
+        //{
+        //    get
+        //    {
+        //        return WebRuntime.Current.Context;//as POSContext;
+        //    }
+        //}
         /// <summary>
         /// 当前的正在处理路线
         /// </summary>
@@ -205,6 +204,14 @@ namespace UMC.Web
             get
             {
                 return runtime.CurrentFlow;//as POSContext;
+            }
+        }
+        public UMC.Security.AccessToken Token
+        {
+
+            get
+            {
+                return runtime.Client.Token;//as POSContext;
             }
         }
         /// <summary>

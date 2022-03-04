@@ -48,61 +48,61 @@ namespace UMC.Web.Activity
 
             var secret = WebResource.Instance().Provider["appSecret"];
 
-            var model = Web.UIDialog.AsyncDialog("Model", d =>
-            {
+            var model = Web.UIDialog.AsyncDialog(this.Context, "Model", d =>
+             {
 
-                if (String.IsNullOrEmpty(appId))
-                {
-                    return this.DialogValue("Select");
+                 if (String.IsNullOrEmpty(appId))
+                 {
+                     return this.DialogValue("Select");
 
-                }
-                var form = request.SendValues ?? new WebMeta();
-                if (form.ContainsKey("limit") == false)
-                {
-                    this.Context.Send(new UISectionBuilder(request.Model, request.Command)
-                        .RefreshEvent("License")
-                        .Builder(), true);
+                 }
+                 var form = request.SendValues ?? new WebMeta();
+                 if (form.ContainsKey("limit") == false)
+                 {
+                     this.Context.Send(new UISectionBuilder(request.Model, request.Command)
+                         .RefreshEvent("License")
+                         .Builder(), true);
 
-                }
+                 }
 
-                if (String.IsNullOrEmpty(secret))
-                {
-                    this.Prompt("效验码不存在");
-                }
-                var webr4 = new Uri(String.Format("https://api.365lu.cn/{0}/Transfer", Utility.Parse36Encode(Utility.Guid(appId).Value))).WebRequest();
-                HotCache.Sign(webr4, new System.Collections.Specialized.NameValueCollection(), secret);
+                 if (String.IsNullOrEmpty(secret))
+                 {
+                     this.Prompt("效验码不存在");
+                 }
+                 var webr4 = new Uri(String.Format("https://api.365lu.cn/{0}/Transfer", Utility.Parse36Encode(Utility.Guid(appId).Value))).WebRequest();
+                 HotCache.Sign(webr4, new System.Collections.Specialized.NameValueCollection(), secret);
 
-                var ui = UISection.Create(new UITitle("授权信息"));
-                var meta = JSON.Deserialize<WebMeta>(webr4.Get().ReadAsString());
-
-
-                ui.AddCell("联系人", meta["contact"], new UIClick(new WebMeta(d, "Contact")).Send(request.Model, request.Command))
-                .AddCell("联系电话", meta["tel"], new UIClick(new WebMeta(d, "Tel")).Send(request.Model, request.Command))
-                .AddCell("电子邮件", meta["email"], new UIClick(new WebMeta(d, "Email")).Send(request.Model, request.Command));
-
-                ui.NewSection().AddCell("主体名称", meta["caption"], new UIClick(new WebMeta(d, "Name")).Send(request.Model, request.Command))
-                .AddCell("主体所在地", meta["address"], new UIClick(new WebMeta(d, "Address")).Send(request.Model, request.Command));
-
-                var skey = meta["key"];
-                var domain = meta["domain"];
-
-                ui.NewSection().AddCell("穿透域名", meta["domain"], new UIClick(new WebMeta(d, "Domain")).Send(request.Model, request.Command));
-
-                ui.NewSection().AddCell("剩余流量", GetSize(Convert.ToInt64(meta["allowSize"])))
-                .AddCell("上行流量", GetSize(Convert.ToInt64(meta["inputSize"])))
-                .AddCell("下行流量", GetSize(Convert.ToInt64(meta["outputSize"])));
-
-                ui.NewSection().AddCell("授权版本", meta.ContainsKey("enterprise") ? "企业版" : "个人版");
+                 var ui = UISection.Create(new UITitle("授权信息"));
+                 var meta = JSON.Deserialize<WebMeta>(webr4.Get().ReadAsString());
 
 
+                 ui.AddCell("联系人", meta["contact"], new UIClick(new WebMeta(d, "Contact")).Send(request.Model, request.Command))
+                 .AddCell("联系电话", meta["tel"], new UIClick(new WebMeta(d, "Tel")).Send(request.Model, request.Command))
+                 .AddCell("电子邮件", meta["email"], new UIClick(new WebMeta(d, "Email")).Send(request.Model, request.Command));
 
-                ui.UIFootBar = new UIFootBar() { IsFixed = true };
-                ui.UIFootBar.AddText(new UIEventText("重置授权码").Click(new UIClick(new WebMeta(d, "License")).Send(request.Model, request.Command)),
-                    new UIEventText("流量充值").Click(new UIClick(new WebMeta(d, "Recharge")).Send(request.Model, request.Command)).Style(new UIStyle().BgColor()));
-                response.Redirect(ui);
+                 ui.NewSection().AddCell("主体名称", meta["caption"], new UIClick(new WebMeta(d, "Name")).Send(request.Model, request.Command))
+                 .AddCell("主体所在地", meta["address"], new UIClick(new WebMeta(d, "Address")).Send(request.Model, request.Command));
 
-                return this.DialogValue("none");
-            });
+                 var skey = meta["key"];
+                 var domain = meta["domain"];
+
+                 ui.NewSection().AddCell("穿透域名", meta["domain"], new UIClick(new WebMeta(d, "Domain")).Send(request.Model, request.Command));
+
+                 ui.NewSection().AddCell("剩余流量", GetSize(Convert.ToInt64(meta["allowSize"])))
+                 .AddCell("上行流量", GetSize(Convert.ToInt64(meta["inputSize"])))
+                 .AddCell("下行流量", GetSize(Convert.ToInt64(meta["outputSize"])));
+
+                 ui.NewSection().AddCell("授权版本", meta.ContainsKey("enterprise") ? "企业版" : "个人版");
+
+
+
+                 ui.UIFootBar = new UIFootBar() { IsFixed = true };
+                 ui.UIFootBar.AddText(new UIEventText("重置授权码").Click(new UIClick(new WebMeta(d, "License")).Send(request.Model, request.Command)),
+                     new UIEventText("流量充值").Click(new UIClick(new WebMeta(d, "Recharge")).Send(request.Model, request.Command)).Style(new UIStyle().BgColor()));
+                 response.Redirect(ui);
+
+                 return this.DialogValue("none");
+             });
             switch (model)
             {
                 case "Select":

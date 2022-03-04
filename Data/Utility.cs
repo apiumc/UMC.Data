@@ -1732,21 +1732,7 @@ namespace UMC.Data
             }
             return string.Empty;
         }
-        /// <summary>
-        /// 获取当前用户名
-        /// </summary>
-        public static string GetUsername()
-        {
-            var user = System.Threading.Thread.CurrentPrincipal.Identity as UMC.Security.Identity;
-            if (user != null)
-            {
-                return user.Name;
-            }
-            else
-            {
-                return "";
-            }
-        }
+
         /// <summary>
         /// 类型转化
         /// </summary>

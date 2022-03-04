@@ -30,11 +30,14 @@ namespace UMC.Data
         public int Count => _count;
         public bool TryGetValue(TKey key, out TValue value)
         {
-            var index = Array.BinarySearch(_keys, 0, _size, key);
-            if (index > -1)
+            lock (_lock)
             {
-                value = _values[index];
-                return value != null;
+                var index = Array.BinarySearch(_keys, 0, _size, key);
+                if (index > -1)
+                {
+                    value = _values[index];
+                    return value != null;
+                }
             }
             value = default(TValue);
             return false;

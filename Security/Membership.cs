@@ -96,50 +96,14 @@ namespace UMC.Security
         /// <summary>
         /// 获取用户身价
         /// </summary>
-        /// <param name="SessionKey">终端标示</param>
+        /// <param name="sessionKey">终端标示</param>
         /// <param name="contentType">终端类型</param>
         /// <returns></returns>
-        public virtual UMC.Security.Principal Authorization(string SessionKey, String contentType)
-        {
-            var sessionKey = Data.Utility.Guid(SessionKey, true).Value;
-            if (sessionKey != Guid.Empty)
-            {
-                var session = new Session<Security.AccessToken>(sessionKey.ToString());
-                if (session.Value != null)
-                {
-                    var auth = session.Value;
-                    auth.Id = sessionKey;
-                    auth.ContentType = session.ContentType;
+        //public virtual UMC.Security.Principal Authorization(string sessionKey, String contentType, string clientip)
+        //{
 
-                    var passDate = Data.Utility.TimeSpan();
-                    if (auth.Timeout > 0)
-                    {
-                        if (((auth.ActiveTime ?? 0) + auth.Timeout) < passDate)
-                        {
-                            var at = AccessToken.Create(new UMC.Security.Guest(sessionKey), sessionKey, auth.ContentType, 0);
-                            var sesion = new Session<UMC.Security.AccessToken>(at, auth.Id.ToString());
-                            sesion.ContentType = at.ContentType;
-                            sesion.Commit(auth.Id.Value, false);
 
-                            return UMC.Security.Principal.Create(at.Identity(), at);
-
-                        }
-                    }
-                    if (auth.ActiveTime < passDate - 600)
-                    {
-                        auth.Commit();
-                    }
-                    return UMC.Security.Principal.Create(auth.Identity(), auth);
-
-                }
-                var user = new UMC.Security.Guest(sessionKey);// UMC.Security.Identity.Create(sessionKey, "?", String.Empty);
-                return UMC.Security.Principal.Create(user, Security.AccessToken.Create(user, sessionKey, contentType, 0));
-
-            }
-            var guid = new UMC.Security.Guest(null);//.Create("?", String.Empty);
-            return UMC.Security.Principal.Create(guid, Security.AccessToken.Create(guid, Guid.Empty, contentType, 0));
-
-        }
+        //}
 
         public virtual int Password(string username, string password, int max)
         {
