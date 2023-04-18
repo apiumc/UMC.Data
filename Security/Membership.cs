@@ -22,21 +22,9 @@ namespace UMC.Security
         /// </summary>
         Lock = 1,
         /// <summary>
-        /// 要更新密码
-        /// </summary>
-        Changing = 2,
-        /// <summary>
-        /// 不能更新密码
-        /// </summary>
-        UnChangePasswork = 4,
-        /// <summary>
         /// 没有通过验证
         /// </summary>
-        UnVerification = 8,
-        /// <summary>
-        /// 禁用
-        /// </summary>
-        Disabled = 16
+        UnVerification = 8
 
     }
     /// <summary> 
@@ -44,7 +32,6 @@ namespace UMC.Security
     /// </summary>
     public class Membership
     {
-        public const string SessionCookieName = "device";
 
         /// <summary>
         /// 管理员角色
@@ -71,39 +58,7 @@ namespace UMC.Security
         {
             _Instance = membership;
         }
-        /// <summary>
-        /// 获取用户身份
-        /// </summary>
-        /// <param name="username"></param>
-        /// <returns></returns>
-        //public abstract List<Identity> Identity(params string[] names);
 
-        /// <summary>
-        /// 获取用户身份
-        /// </summary>
-        /// <param name="username"></param>
-        /// <returns></returns>
-        //public abstract Identity Identity(string username);
-        /// <summary> 
-        /// 检验用户密码
-        /// </summary>
-        /// <param name="username">用户名</param>
-        /// <param name="password">密码</param>
-        /// <param name="maxtimes">失败最大次数</param>
-        /// <returns>失败次数</returns>
-        //public abstract int Password(string username, string password, int maxtimes);
-
-        /// <summary>
-        /// 获取用户身价
-        /// </summary>
-        /// <param name="sessionKey">终端标示</param>
-        /// <param name="contentType">终端类型</param>
-        /// <returns></returns>
-        //public virtual UMC.Security.Principal Authorization(string sessionKey, String contentType, string clientip)
-        //{
-
-
-        //}
 
         public virtual int Password(string username, string password, int max)
         {
@@ -116,24 +71,23 @@ namespace UMC.Security
             }
             else
             {
-                if (((user.Flags ?? Security.UserFlags.Lock) & Security.UserFlags.Lock) == Security.UserFlags.Lock)
+                var flags = user.Flags ?? Security.UserFlags.Normal;
+                if ((flags & Security.UserFlags.Lock) == Security.UserFlags.Lock)
                 {
                     return -2;
                 }
-                else if (((user.Flags ?? Security.UserFlags.Disabled) & Security.UserFlags.Disabled) == Security.UserFlags.Disabled)
+                else if (user.IsDisabled == true)
                 {
                     return -3;
                 }
 
 
                 var destPwd = Data.DataFactory.Instance().Password(user.Id.Value);
-                // var passwrod = Data.DataFactory.Instance().Password(username);
 
                 if (String.IsNullOrEmpty(destPwd))
                 {
-                    return 0;
+                    return -4;
                 }
-                // UMC.Data.Utility.DES(Convert.FromBase64String(passwrod), user.Id.Value);
                 StringComparison comparison = StringComparison.CurrentCulture;
                 var spIndex = password.IndexOf(':');
                 if (spIndex > 0)
@@ -157,7 +111,7 @@ namespace UMC.Security
                     var s = new User { VerifyTimes = (user.VerifyTimes ?? 0) + 1, Username = username };
                     if (max <= user.VerifyTimes)
                     {
-                        s.Flags = (user.Flags ?? Security.UserFlags.Normal) | Security.UserFlags.Lock;
+                        s.Flags = flags | Security.UserFlags.Lock;
                     }
                     Data.DataFactory.Instance().Put(s);
                     return s.VerifyTimes ?? 0;
@@ -170,7 +124,7 @@ namespace UMC.Security
         }
         public virtual UMC.Security.Identity Identity(string name, int accountType)
         {
-            var acount = Data.DataFactory.Instance().Account(name, accountType);
+            var acount = Data.DataFactory.Instance().Account(name);
 
             if (acount == null)
             {
@@ -181,7 +135,7 @@ namespace UMC.Security
             if (user == null)
             {
                 var a = UMC.Security.Account.Create(acount);
-                return UMC.Security.Identity.Create(acount.user_id.Value, "#", (a.Items["Alias"] as string) ?? " 关联用户");
+                return UMC.Security.Identity.Create(acount.user_id.Value, "#", (a.Items["Alias"] as string) ?? "关联用户");
             }
             return user;
         }
@@ -206,7 +160,7 @@ namespace UMC.Security
 
             if (Data.DataFactory.Instance().User(username) == null)
             {
-                var sn = UMC.Data.Utility.Guid(username, true).Value;
+                var sn = UMC.Data.Utility.NewGuid();// username, true).Value;
 
                 Data.DataFactory.Instance().Put(new User
                 {
@@ -214,13 +168,13 @@ namespace UMC.Security
                     Flags = UMC.Security.UserFlags.Normal,
                     Id = sn,
                     RegistrTime = DateTime.Now,
-                    //OrganizeId = OrganizeId,
                     Username = username
                 });
-                //if (String.IsNullOrEmpty(password) == false)
-                //{
-                //    Data.DataFactory.Instance().Password(sn, password);
-                //}
+                using (System.IO.Stream stream = typeof(Membership).Assembly//UMC.Proxy
+                                        .GetManifestResourceStream("UMC.Data.Resources.header.png"))
+                {
+                    WebResource.Instance().Transfer(stream, $"images/{sn}/1/0.png");
+                }
                 return sn;
             }
             return Guid.Empty;
@@ -235,6 +189,28 @@ namespace UMC.Security
         }
 
 
+        public virtual UMC.Security.Identity Identity(int site, string username)
+        {
+            if (String.IsNullOrEmpty(username)) throw new ArgumentNullException("username");
+
+            var user = Data.DataFactory.Instance().User(username);
+            if (user == null)
+            {
+                return null;
+            }
+            var flags = user.Flags ?? Security.UserFlags.Normal;
+            if ((flags & Security.UserFlags.Lock) == Security.UserFlags.Lock || (user.IsDisabled ?? false) == true)
+            {
+                return UMC.Security.Identity.Create(user.Id.Value, user.Username, user.Alias);
+            }
+            var orgs = new List<String>();
+            Utility.Each(Data.DataFactory.Instance().OrganizesTree(user), r =>
+            {
+                orgs.Add(r.ToString());
+            });
+            return UMC.Security.Identity.Create(user.Id.Value, user.Username, user.Alias, Data.DataFactory.Instance().Roles(user.Id.Value, site), orgs.ToArray());
+
+        }
         public virtual UMC.Security.Identity Identity(string username)
         {
             if (String.IsNullOrEmpty(username)) throw new ArgumentNullException("username");
@@ -245,26 +221,22 @@ namespace UMC.Security
                 return null;
             }
             var flags = user.Flags ?? Security.UserFlags.Normal;
-            if ((flags & Security.UserFlags.Lock) == Security.UserFlags.Lock)
+            if ((flags & Security.UserFlags.Lock) == Security.UserFlags.Lock || (user.IsDisabled ?? false) == true)
             {
                 return UMC.Security.Identity.Create(user.Id.Value, user.Username, user.Alias);
             }
-            var roles = new List<string>();
-
-
-
-            UMC.Data.Utility.Each(Data.DataFactory.Instance().Roles(user.Id.Value), dr =>
+            var orgs = new List<String>();
+            Utility.Each(Data.DataFactory.Instance().OrganizesTree(user), r =>
             {
-                roles.Add(dr.Rolename);
+                orgs.Add(r.ToString());
             });
-
-            return UMC.Security.Identity.Create(user.Id.Value, user.Username, user.Alias, roles.ToArray());
+            return UMC.Security.Identity.Create(user.Id.Value, user.Username, user.Alias, Data.DataFactory.Instance().Roles(user.Id.Value, 0), orgs.ToArray());
 
         }
 
 
 
-        public virtual bool AddRole(string Username, params string[] roles)
+        public virtual bool AddRole(string Username, int site, params string[] roles)
         {
             if (String.IsNullOrEmpty(Username)) throw new ArgumentNullException("username");
             if (roles.Length > 0)
@@ -272,19 +244,16 @@ namespace UMC.Security
                 var user = Data.DataFactory.Instance().User(Username);
                 if (user != null)
                 {
-                    var rols = Data.DataFactory.Instance().Roles(user.Id.Value).ToList();
-                    var addRs = roles.Where(d => !rols.Exists(c => String.Equals(c.Rolename, d, StringComparison.CurrentCultureIgnoreCase)));//.ToList();
-                    if (addRs.Count() > 0)
+                    foreach (var k in roles)
                     {
-                        var allRoles = Data.DataFactory.Instance().Roles();
-                        if (allRoles.Length == 0)
+                        Data.DataFactory.Instance().Put(new UserToRole
                         {
-                            allRoles = new Data.Entities.Role[]{new  Data.Entities.Role {  Rolename=AdminRole},
-                                new  Data.Entities.Role {  Rolename= UserRole},new  Data.Entities.Role {  Rolename=GuestRole} };
-                        }
-                        var rs = allRoles.Where(a => addRs.Contains(a.Rolename)).Union(rols).ToArray();
-                        Data.DataFactory.Instance().Put(user.Id.Value, rs);
+                            Rolename = k,
+                            Site = site,
+                            user_id = user.Id.Value
+                        });
                     }
+
 
                 }
             }
@@ -292,11 +261,11 @@ namespace UMC.Security
             return false;
         }
 
-        public virtual bool ChangeAlias(string username, string alias)
+        public virtual void ChangeAlias(string username, string alias)
         {
             if (String.IsNullOrEmpty(username)) throw new ArgumentNullException("username");
 
-            return Data.DataFactory.Instance().Put(new User { Username = username, Alias = alias });
+            Data.DataFactory.Instance().Put(new User { Username = username, Alias = alias });
         }
 
 
@@ -310,17 +279,16 @@ namespace UMC.Security
                 return null;
             }
             var flags = user.Flags ?? Security.UserFlags.Normal;
-            if ((flags & Security.UserFlags.Lock) == Security.UserFlags.Lock)
+            if ((flags & Security.UserFlags.Lock) == Security.UserFlags.Lock || (user.IsDisabled ?? false) == true)
             {
                 return UMC.Security.Identity.Create(user.Id.Value, user.Username, user.Alias);
             }
-            var roles = new List<string>();
-
-
-
-            UMC.Data.Utility.Each(Data.DataFactory.Instance().Roles(user.Id.Value), dr => roles.Add(dr.Rolename));
-
-            return UMC.Security.Identity.Create(user.Id.Value, user.Username, user.Alias, roles.ToArray());
+            var orgs = new List<String>();
+            Utility.Each(Data.DataFactory.Instance().OrganizesTree(user), r =>
+            {
+                orgs.Add(r.ToString());
+            });
+            return UMC.Security.Identity.Create(user.Id.Value, user.Username, user.Alias, Data.DataFactory.Instance().Roles(user.Id.Value, 0), orgs.ToArray());
 
 
         }
@@ -338,7 +306,6 @@ namespace UMC.Security
                     Flags = UMC.Security.UserFlags.Normal,
                     Id = id,
                     RegistrTime = DateTime.Now,
-                    //OrganizeId = OrganizeId,
                     Username = username
                 });
 

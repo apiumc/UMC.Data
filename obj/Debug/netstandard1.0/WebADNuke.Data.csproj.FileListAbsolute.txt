@@ -1,0 +1,4 @@
+Z:\sming\Projects\WebADNuke.Data\WebADNuke.Data\obj\Debug\netstandard1.0\WebADNuke.Data.csprojResolveAssemblyReference.cache
+Z:\sming\Projects\WebADNuke.Data\WebADNuke.Data\obj\Debug\netstandard1.0\WebADNuke.Data.csproj.CoreCompileInputs.cache
+Z:\sming\Projects\WebADNuke.Data\WebADNuke.Data\obj\Debug\netstandard1.0\WebADNuke.Data.AssemblyInfoInputs.cache
+Z:\sming\Projects\WebADNuke.Data\WebADNuke.Data\obj\Debug\netstandard1.0\WebADNuke.Data.AssemblyInfo.cs

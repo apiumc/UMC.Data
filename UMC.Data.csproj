@@ -1,15 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <RootNamespace>UMC.Data</RootNamespace>
     <AssemblyName>UMC.Data</AssemblyName>
+    <Title>UMC.Data</Title>
+    <PackageId>UMC.Data</PackageId>
+    <Version>1.0.34</Version>
+    <Authors>APIUMC</Authors>
+    <Company>小雨伞</Company>
+    <PackageDescription>UMC身份体系和高速存储架构</PackageDescription>
+    <PackageProjectUrl>https://github.com/apiumc/UMC.Data</PackageProjectUrl>
+    <PackageVersion>1.0.34</PackageVersion>
   </PropertyGroup>
- 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\header.html" />
-    <EmbeddedResource Include="Resources\index.html" />
-    <EmbeddedResource Include="Resources\page.html" />
+    <EmbeddedResource Include="Resources\header.png" />
   </ItemGroup>
-
+  <ItemGroup>
+    <ProjectReference Include="..\UMC\UMC.csproj" />
+    <!-- <ProjectReference Include="..\UMC.Generators\UMC.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" /> -->
+  </ItemGroup>
 </Project>

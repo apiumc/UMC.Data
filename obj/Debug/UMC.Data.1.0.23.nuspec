@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>UMC.Data</id>
+    <version>1.0.23</version>
+    <title>UMC.Data</title>
+    <authors>APIUMC</authors>
+    <projectUrl>https://github.com/apiumc/UMC.Data</projectUrl>
+    <description>UMC身份体系和高速存储架构</description>
+    <dependencies>
+      <group targetFramework=".NETStandard2.1">
+        <dependency id="UMC" version="1.0.23" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="/Users/wushunming/Documents/Static/UMC.Data/bin/Debug/netstandard2.1/UMC.Data.dll" target="lib/netstandard2.1/UMC.Data.dll" />
+  </files>
+</package>

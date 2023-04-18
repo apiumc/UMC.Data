@@ -7,13 +7,12 @@ using UMC.Web;
 
 namespace UMC.Web.Activity
 {
-    [Mapping("System", "Scanning", Auth = WebAuthType.All, Desc = "移动扫描处理", Weight = 0)]
+    [Mapping("System", "Scanning", Auth = WebAuthType.All, Desc = "移动扫描", Weight = 0)]
     public class SystemScanningActivity : WebActivity
     {
         protected virtual void Scanning(Uri url)
         {
-            var domain = new Uri(url, Data.WebResource.Instance().WebDomain()).AbsoluteUri;
-            if (domain.Contains(url.Host))
+            if (Data.WebResource.Instance().WebDomain().Contains(url.Host))
             {
                 var paths = new List<String>();
 
@@ -26,13 +25,14 @@ namespace UMC.Web.Activity
                 switch (paths[0])
                 {
                     case "download":
+                    case "Auth":
                     case "app":
                         if (String.IsNullOrEmpty(url.Query))
                         {
                             this.OpenUrl(url);
                         }
                         var query = url.Query.Substring(1);
-                        var user = this.Context.Token.Identity(); //UMC.Security.Identity.Current;
+                        var user = this.Context.Token.Identity();
                         if (user.IsAuthenticated == false)
                         {
                             this.Context.Response.Redirect("Account", "Login");
@@ -52,15 +52,15 @@ namespace UMC.Web.Activity
                                     .Color(0xaaa).Padding(40, 20).BgColor(0xfff).Name("icon", new UIStyle().Font("wdk").Size(160));
                                 fm.Add(desc);
 
-                                fm.Submit("确认登录", this.Context.Request, "PC.Login");
+                                fm.Submit("确认登录", "PC.Login");
                                 return fm;
                             });
-                            var sesion = UMC.Data.DataFactory.Instance().Session( Context.Token.Id.ToString());
+                            var sesion = UMC.Data.DataFactory.Instance().Session(Context.Token.Device.ToString());
 
                             if (sesion != null)
                             {
-                                sesion.SessionKey = query;
-                                UMC.Data.DataFactory.Instance().Post(sesion);
+                                sesion.SessionKey = dever.ToString();
+                                UMC.Data.DataFactory.Instance().Put(sesion);
                             }
                             webr.Push(dever.Value, new WebMeta().Put("msg", "OK").Put("type", "SignIn").Put("root", Data.Utility.GetRoot(this.Context.Request.Url)));
                             this.Context.Send("PC.Login", true);

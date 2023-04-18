@@ -62,7 +62,7 @@ namespace UMC.Security
             this.ForId = acc.ForId;
             this.user_id = acc.user_id.Value;
             this.Type = acc.Type ?? 0;
-            this.Items = UMC.Data.JSON.Deserialize<Hashtable>(acc.ConfigData) ?? new Hashtable();
+            this.Items = UMC.Data.JSON.Deserialize<Web.WebMeta>(acc.ConfigData) ?? new Web.WebMeta();
         }
 
         public static Account Create(UMC.Data.Entities.Account acc)
@@ -87,10 +87,17 @@ namespace UMC.Security
         /// <summary>
         /// 数据
         /// </summary>
-        public Hashtable Items
+        public Web.WebMeta Items
         {
             get;
             private set;
+        }
+
+        public Account Put(String key ,string value)
+        {
+            this.Items.Put(key, value);
+            return this;
+
         }
         /// <summary>
         /// 获得关系
@@ -106,7 +113,7 @@ namespace UMC.Security
             var names = new List<String>();
             names.Add(main.Name);
             var types = new List<int>();
-            types.Add((int)main.Type.Value);
+            types.Add(main.Type.Value);
             foreach (var r in relations)
             {
                 if (r.Type.HasValue)
@@ -259,7 +266,7 @@ namespace UMC.Security
             UMC.Data.DataFactory.Instance().Put(acc);
             return new Account(acc);
         }
-        System.Collections.Generic.List<UMC.Data.Entities.Account> accounts;
+       UMC.Data.Entities.Account[] accounts;
 
         public Account this[int accountType]
         {
@@ -267,13 +274,13 @@ namespace UMC.Security
             {
                 if (accounts == null)
                 {
-                    this.accounts = new System.Collections.Generic.List<Data.Entities.Account>(Data.DataFactory.Instance().Account(this.user_id));
+                    this.accounts =  Data.DataFactory.Instance().Account(this.user_id);
                 }
 
-                for (var i = 0; i < this.accounts.Count; i++)
+                for (var i = 0; i < this.accounts.Length; i++)
                 {
                     var ac = this.accounts[i];
-                    if (ac.Type == accountType && (ac.Flags & UMC.Security.UserFlags.Disabled) != UMC.Security.UserFlags.Disabled)
+                    if (ac.Type == accountType)
                     {
                         var act = new Account(ac);
                         act.accounts = this.accounts;

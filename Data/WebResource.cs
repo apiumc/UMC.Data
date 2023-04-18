@@ -5,6 +5,7 @@ using System.IO;
 using System.Data;
 using System.Drawing;
 using UMC.Net;
+using System.Net.WebSockets;
 
 namespace UMC.Data
 {
@@ -35,54 +36,18 @@ namespace UMC.Data
                 else
                 {
                     provider = Data.Provider.Create("WebResource", "UMC.Data.WebResource");
+                    pc.Add(provider);// provider;
                 }
-                _Instance = UMC.Data.Reflection.CreateObject(provider) as WebResource;
-                if (_Instance == null)
-                {
-                    _Instance = new WebResource();
-                    _Instance.Provider = provider;
-
-                }
+                _Instance = new WebResource();
+                _Instance.Provider = provider;
             }
             return _Instance;
         }
 
         public virtual string WebDomain()
         {
-            return this.Provider["domain"] ?? "/";
+            return this.Provider["domain"] ?? "localhost";
         }
-        public virtual string AppSecret(bool isRefresh = false)
-        {
-            if (isRefresh)
-            {
-                var skey = Utility.Guid(Guid.NewGuid());
-                UMC.Data.DataFactory.Instance().Put(new Data.Entities.Config { ConfValue = skey, ConfKey = "RTL_API_LOGIN_SIGN_KEY" });
-                return skey;
-            }
-            else
-            {
-                var cfg = UMC.Data.DataFactory.Instance().Config("RTL_API_LOGIN_SIGN_KEY");
-                var s = String.Empty;
-                if (cfg != null)
-                {
-                    s = cfg.ConfValue;
-                }
-                if (String.IsNullOrEmpty(s))
-                {
-                    s = Utility.Guid(Guid.NewGuid());
-                    UMC.Data.DataFactory.Instance().Put(new Data.Entities.Config { ConfValue = s, ConfKey = "RTL_API_LOGIN_SIGN_KEY" });
-
-                }
-                return s;
-            }
-
-        }
-        public virtual string TempDomain()
-        {
-            return "http://oss.365lu.cn/";
-
-        }
-
         public virtual T Cache<T>(string key)
         {
 
@@ -102,69 +67,33 @@ namespace UMC.Data
             UMC.Data.DataFactory.Instance().Put(config);
 
         }
-        public virtual string ImageResolve(Guid id, object seq, object size)
+        public virtual string ImageResolve(Guid id, object key, object size)
         {
             var kdey = "";
             switch (size.ToString())
             {
                 case "0":
-                    break;
+                    return ResolveUrl(String.Format("{2}{0}/{1}/0.png", id, key, UMC.Data.WebResource.ImageResource, kdey));
                 case "1":
-                    kdey = "!350";
+                    kdey = "m350";
                     break;
                 case "2":
-                    kdey = "!200";
+                    kdey = "m200";
                     break;
                 case "3":
-                    kdey = "!150";
+                    kdey = "m150";
                     break;
                 case "4":
-                    kdey = "!100";
+                    kdey = "m100";
                     break;
                 case "5":
-                    kdey = "!50";
+                    kdey = "m50";
                     break;
             }
-            return ResolveUrl(String.Format("{2}{0}/{1}/0.jpg{3}", id, seq, UMC.Data.WebResource.ImageResource, kdey));
-
-        }
-        public virtual string ImageResolve(Guid id, string key, int size)
-        {
-            var kdey = "";
-            switch (size)
-            {
-                case 0:
-                    break;
-                case 1:
-                    kdey = "!350";
-                    break;
-                case 2:
-                    kdey = "!200";
-                    break;
-                case 3:
-                    kdey = "!150";
-                    break;
-                case 4:
-                    kdey = "!100";
-                    break;
-                case 5:
-                    kdey = "!50";
-                    break;
-            }
-            return ResolveUrl(String.Format("{2}{0}/{1}/0.jpg{3}", id, key, UMC.Data.WebResource.ImageResource, kdey));
+            return ResolveUrl(String.Format("{2}{0}/{1}/0.png?umc-image={3}", id, key, UMC.Data.WebResource.ImageResource, kdey));
 
         }
 
-        public virtual void CopyResolveUrl(String source, String target)
-        {
-            var sourcePath = Data.Utility.MapPath(this.ResolveUrl(source));
-            var targetPath = Data.Utility.MapPath(this.ResolveUrl(target));
-            if (System.IO.File.Exists(sourcePath))
-            {
-                File.Copy(sourcePath, targetPath);
-            }
-
-        }
         public virtual void Transfer(Stream stream, string targetKey)
         {
             if (targetKey.StartsWith("bin/", StringComparison.CurrentCultureIgnoreCase))
@@ -200,17 +129,32 @@ namespace UMC.Data
             {
                 return;
             }
-            soureUrl.WebRequest().Get(xhr =>
+            switch (soureUrl.Scheme)
             {
-                xhr.ReadAsStream(stream =>
-                {
-                    Transfer(stream, targetKey);
-                    stream.Close();
-                    stream.Dispose();
+                case "file":
+                    var file = soureUrl.AbsolutePath.Replace('/', System.IO.Path.DirectorySeparatorChar);
+                    if (System.IO.File.Exists(file))
+                    {
+                        using (var stream = System.IO.File.OpenRead(file))
+                        {
+                            Transfer(stream, targetKey.TrimStart('/'));
+                        }
+                    }
+                    break;
+                default:
+                    soureUrl.WebRequest().Get(xhr =>
+                    {
+                        xhr.ReadAsStream(stream =>
+                        {
+                            Transfer(stream, targetKey.TrimStart('/'));
+                            stream.Close();
+                            stream.Dispose();
 
-                }, ex => { });
+                        }, ex => { });
 
-            });
+                    });
+                    break;
+            }
 
         }
 
@@ -226,44 +170,27 @@ namespace UMC.Data
             {
                 vUrl = "/" + path.Substring(1);
             }
-            String src = this.Provider["src"];
-            if (String.IsNullOrEmpty(src))
-            {
-
-                String vpath = this.Provider["appId"];
-
-                if (String.IsNullOrEmpty(vpath) == false)
-                {
-                    String code = Utility.Parse36Encode(Utility.Guid(vpath).Value);
-                    vpath = $"/{code}";
-                }
-
-                return String.Format("https://image.365lu.cn{0}{1}", vpath, vUrl);
-            }
-            return src + vUrl;
+            return vUrl;
         }
         void Sign(System.Collections.Specialized.NameValueCollection nvs, System.Net.HttpWebRequest http)
         {
             var secret = this.Provider["appSecret"];
-            if (String.IsNullOrEmpty(secret)==false)
-            { 
-                HotCache.Sign(http, nvs, secret);
+            if (String.IsNullOrEmpty(secret) == false)
+            {
+                APIProxy.Sign(http, nvs, secret);
             }
+
 
         }
         public virtual void Transfer(Uri uri, Guid guid, int seq, string type)
         {
             String key = String.Format("images/{0}/{1}/{2}.{3}", guid, seq, 0, type.ToLower());
-            var sts = new Uri(HotCache.Uri, "Transfer").WebRequest();
-
-            var ns = new System.Collections.Specialized.NameValueCollection();
-            Sign(ns, sts);
-            sts.Put(new Web.WebMeta().Put("src", uri.AbsoluteUri, "key", key), xhr => { });//.ReadAsString();
-
+            Transfer(uri, key);
         }
+
         public virtual void Transfer(Uri uri, Guid guid, int seq)
         {
-            Transfer(uri, guid, seq, "jpg");
+            Transfer(uri, guid, seq, "png");
         }
 
 
@@ -276,7 +203,7 @@ namespace UMC.Data
             String vpath = this.Provider["appId"];
             if (String.IsNullOrEmpty(vpath) == false)
             {
-                var sts = new Uri(HotCache.Uri, $"Push?device={UMC.Data.Utility.Guid(tid)}").WebRequest();
+                var sts = new Uri(APIProxy.Uri, $"Push?device={UMC.Data.Utility.Guid(tid)}").WebRequest();
 
                 var ns = new System.Collections.Specialized.NameValueCollection();
 
@@ -293,7 +220,7 @@ namespace UMC.Data
             String vpath = this.Provider["appId"];
             if (String.IsNullOrEmpty(vpath) == false && devices.Length > 0 && objs.Length > 0)
             {
-                var webR = new Uri(HotCache.Uri, "Push").WebRequest();
+                var webR = new Uri(APIProxy.Uri, "Push").WebRequest();
 
                 var ns = new System.Collections.Specialized.NameValueCollection();
 

@@ -1,7 +1,7 @@
 ﻿using System;
 namespace UMC.Data.Entities
 {
-    public class Password
+    public partial class Password : Record
     {
         public Guid? Key
         {

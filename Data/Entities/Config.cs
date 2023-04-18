@@ -4,7 +4,7 @@ using System.Text;
 
 namespace UMC.Data.Entities
 {
-    public class Config
+    public partial class Config : Record
     {
         public string ConfKey
         {

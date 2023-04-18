@@ -38,7 +38,7 @@ namespace UMC.Web.Activity
                 {
                     opts.Add(s, "必须字段");
                 }
-                from.Submit("确认上传", request, "Pager");
+                from.Submit("确认上传", $"{request.Model}.{request.Command}");
                 return from;
 
             });
@@ -75,7 +75,7 @@ namespace UMC.Web.Activity
                 var reader = new System.IO.StreamReader(pathFile, Encoding.GetEncoding(Settings["Encoding"] ?? "utf-8"));
                 var cinex = 0;
                 var from = new Web.UIFormDialog() { Title = "核对字段" };
-                var csvColumns = CSV.FromCsvLine(CSV.ReadLine(reader));
+                var csvColumns = CSV.FromCsvLine(reader.ReadLine());
                 reader.Close();
                 foreach (var c in this.Columns)
                 {
@@ -106,9 +106,9 @@ namespace UMC.Web.Activity
                 this.Prompt("无有效的字段");
             }
 
-            var userName = this.Context.Token.Username;// Utility.GetUsername();
+            var userName = this.Context.Token.Username;
 
-            var log = new CSV.Log(Utility.GetRoot(request.Url), Key, String.Format("开始{0}", this.Title ?? "文本数据导入"));
+            var log = new CSV.Log(Key, String.Format("开始{0}", this.Title ?? "文本数据导入"));
             Data.Reflection.Start(() =>
                 {
                     int rowIndex = 1;
@@ -123,7 +123,7 @@ namespace UMC.Web.Activity
                         var now = DateTime.Now;
 
 
-                        var header = CSV.ReadLine(reader);
+                        var header = reader.ReadLine();
                         writer.WriteLine(header);
 
                         int okindex = 0;
@@ -211,7 +211,7 @@ namespace UMC.Web.Activity
                     }
 
                 });//.Start();
-
+            this.Context.Send($"{request.Model}.{request.Command}", false);
             this.Context.Send(new UISectionBuilder("System", "Log", new WebMeta("Key", Key))
                     .Builder(), true);
         }

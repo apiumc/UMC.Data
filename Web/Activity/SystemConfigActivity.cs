@@ -19,17 +19,17 @@ namespace UMC.Web.Activity
             }
             var config = this.AsyncDialog("Config", g => new UITextDialog() { Title = "请输入配置的节点" });
 
-            var cfg = UMC.Data.DataFactory.Instance().Configuration(config.ToLower()) ?? new ProviderConfiguration();
+            var cfg = UMC.Data.Reflection.Configuration(config.ToLower());
             var configKey = this.AsyncDialog("Key", g =>
             {
                 var form = request.SendValues ?? new UMC.Web.WebMeta();
                 if (form.ContainsKey("limit") == false)
                 {
                     this.Context.Send(new UISectionBuilder(request.Model, request.Command, new WebMeta(request.Arguments))
-                        .RefreshEvent("ProviderConfiguration")
+                        .RefreshEvent($"{request.Model}.{request.Command}")
                             .Builder(), true);
                 }
-                var title = new UITitle(config + "配置");
+                var title = new UITitle(config);
                 switch (config.ToLower())
                 {
                     case "assembly":
@@ -43,6 +43,9 @@ namespace UMC.Web.Activity
                         break;
                     case "parser":
                         title.Title = "转码配置";
+                        break;
+                    case "account":
+                        title.Title = "账户配置";
                         break;
                     case "payment":
                         title.Title = "支付配置";
@@ -60,7 +63,8 @@ namespace UMC.Web.Activity
                     for (var i = 0; i < cfg.Count; i++)
                     {
                         var p = cfg[i];
-                        ui2.AddCell(p.Name, "", UIClick.Query(new WebMeta("Type", String.Format("{0}", p.Name))));
+                        var cell = UICell.UI(p.Name, "", UIClick.Query(new WebMeta("Type", String.Format("{0}", p.Name))));
+                        ui2.Delete(cell, new UIEventText().Click(new UIClick(new WebMeta(request.Arguments).Put(g, "Del", "Name", p.Name)).Send(request)));
                     }
                 }
                 else
@@ -73,7 +77,9 @@ namespace UMC.Web.Activity
                     var ui2 = ui.NewSection();
                     for (var i = 0; i < p.Attributes.Count; i++)
                     {
-                        ui2.AddCell(p.Attributes.GetKey(i), new UIClick("Config", config, g, String.Format("{0}${1}", p.Name, p.Attributes.GetKey(i))).Send(request.Model, request.Command));
+                        var cell = UICell.UI(p.Attributes.GetKey(i), new UIClick("Config", config, g, String.Format("{0}${1}", p.Name, p.Attributes.GetKey(i))).Send(request.Model, request.Command));
+                        ui2.Delete(cell, new UIEventText().Click(new UIClick(new WebMeta(request.Arguments).Put(g, "Del", "Name", String.Format("{0}${1}", p.Name, p.Attributes.GetKey(i)))).Send(request)));
+
                     }
                 }
 
@@ -83,6 +89,28 @@ namespace UMC.Web.Activity
             });
             switch (configKey)
             {
+                case "Del":
+                    {
+                        var name = this.AsyncDialog("Name", "none");
+
+                        var names = name.Split('$');
+                        if (names.Length == 1)
+                        {
+                            cfg.Remove(name);
+                        }
+                        else
+                        {
+                            var p2 = cfg[names[0]];
+                            if (p2 != null)
+                            {
+                                p2.Attributes.Remove(names[1]);
+                            }
+                        }
+                        Reflection.Configuration(config.ToLower(), cfg);
+                        this.Context.Send($"{request.Model}.{request.Command}", true);
+
+                    }
+                    break;
                 case "NEW":
                     {
                         var ps = this.AsyncDialog("Setting", g =>
@@ -90,9 +118,9 @@ namespace UMC.Web.Activity
                             var fm = new UIFormDialog();
                             fm.Title = "新建节点";
                             fm.AddText("节点名", "Name", String.Empty);
-                            fm.AddText("类型值", "Value", String.Empty).PlaceHolder("值为none，则删除此节点");
+                            fm.AddText("类型值", "Value", String.Empty);
 
-                            fm.Submit("确认", request, "ProviderConfiguration");
+                            fm.Submit("确认", $"{request.Model}.{request.Command}");
                             return fm;
                         });
 
@@ -100,18 +128,14 @@ namespace UMC.Web.Activity
                         var p2 = cfg[pro2.Name];
                         if (p2 != null)
                         {
-                            cfg.Providers.Remove(p2.Name);
+                            cfg.Remove(p2.Name);
                             pro2.Attributes.Add(p2.Attributes);
                         }
-                        if (String.Equals(pro2.Type, "none") == false)
-                        {
-                            cfg.Providers[pro2.Name] = pro2;
-                        }
-                        DataFactory.Instance().Configuration(config.ToLower(), cfg);
 
-                        this.Context.Send("ProviderConfiguration", true);
-
-
+                        cfg.Add( pro2);
+                        Reflection.Configuration(config.ToLower(), cfg);
+                        this.Context.Send($"{request.Model}.{request.Command}", false);
+                        response.Redirect(request.Model, request.Command, $"{config.ToLower()}${pro2.Name}", true);
                     }
                     break;
                 default:
@@ -134,25 +158,16 @@ namespace UMC.Web.Activity
                              {
 
                                  fm.AddTextValue().Add("属性名", ckeys[1]);
-                                 fm.AddText("属性值", "Value", pro[ckeys[1]]).PlaceHolder("值为none，则删除此属性");
+                                 fm.AddTextarea("属性值", "Value", pro[ckeys[1]]);
                              }
-                             fm.Submit("确认", request, "ProviderConfiguration");
+                             fm.Submit("确认", $"{request.Model}.{request.Command}");
                              return fm;
                          });
                         var value = ps["Value"];
-                        if (value == "none")
-                        {
-                            pro.Attributes.Remove(ckeys[1]);
-                        }
-                        else
-                        {
-                            pro.Attributes[ps["Name"] ?? ckeys[1]] = ps["Value"];
-                        }
+                        pro.Attributes[ps["Name"] ?? ckeys[1]] = value;
 
-                        DataFactory.Instance().Configuration(config.ToLower(), cfg);
-                        this.Context.Send("ProviderConfiguration", true);
-
-
+                        Reflection.Configuration(config.ToLower(), cfg);
+                        this.Context.Send($"{request.Model}.{request.Command}", true);
                     }
                     break;
             }

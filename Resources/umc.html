@@ -1,0 +1,115 @@
+﻿
+
+<!doctype html>
+<html>
+
+<head>
+    <title>API UMC</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <link href="/css/weui.css" rel="stylesheet" type="text/css" />
+    <link href="/css/base.css" rel="stylesheet" type="text/css" />
+    <link href="/css/icon.css" rel="stylesheet" type="text/css" />
+    <link href="/css/umc.ui.css" rel="stylesheet" type="text/css" />
+    <link href="/css/umc.css" rel="stylesheet" type="text/css" />
+    <script src="/js/umc.js"></script>
+    <script src="/js/umc.database.js"></script>
+    <script src="/js/umc.grid.js"></script>
+    <script src="/js/umc.ui.js"></script>
+    <script src="/js/umc.dialog.js"></script>
+    <script src="/js/umc.page.js"></script>
+    <script src="/js/umc.setup.js"></script>
+    <style>
+        .weui_mask {
+            background-color: transparent !important;
+        }
+        body > div[ui] {
+            box-shadow: -2px 0px 5px #88888888;
+        }
+    </style>
+
+</head>
+
+<body>
+
+
+    <div ui="main">
+
+        <div class="app-container">
+            <div class="ui-setup">
+                <header>
+                    <div class="ui-setup-logo"><em>API</em> <sub>UMC</sub></div>
+                </header>
+                <div style="overflow: hidden; padding-bottom: 1em; display: flex; ">
+                    <ul id="component" style="flex: 1;">
+                        <script type="text/html">
+                        <li class="left">
+                            {text}<a class="el-tag {OK} el-tag--small" model="System" cmd="Setup">{Status}</a>
+                            
+                        </li>
+                        </script>
+                    </ul>
+                    <div>
+                        
+                        <a ui-event="Command" class="el-button el-button--primary el-button--small">
+                            <b class="wdk_cell_icon" data-icon="&#xf188;"></b>调试指令
+                        </a>
+                        <a ui-event="Scanning" class="el-button el-button--primary el-button--small">
+                            <b class="wdk_cell_icon" data-icon="&#xf1e5;"></b>重新扫描
+                        </a>
+                    </div>
+
+                </div>
+                <div class="item-container ">
+                    <div id="mapping" class="el-table">
+                        <table cellspacing="0" cellpadding="0" border="0">
+                            <colgroup>
+                                <col width="80">
+                                <col width="50">
+                                <col width="110">
+                                <col width="150">
+                            </colgroup>
+                            <thead>
+                                <tr>
+
+                                    <th>
+                                        功能
+                                    </th>
+                                    <th>
+                                        授权方式
+                                    </th>
+                                    <th>
+                                        描述
+                                    </th>
+                                    <th>
+                                        类型
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <script type="text/html">
+                                <tr class="el-table__row">
+                                    <td>
+                                        <a class="link-type">{name}</a>
+                                    </td>
+                                    <td class="is-center">
+                                        {auth}
+                                    </td>
+                                    <td>
+                                        {desc}
+                                    </td>
+                                    <td>
+                                        {type}
+                                    </td>
+                                </tr>
+                                </script>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

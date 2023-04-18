@@ -7,7 +7,7 @@ namespace UMC.Data.Entities
     /// <summary>
     /// 相册
     /// </summary>
-    public class Picture
+    public partial class Picture : Record
     {
         public Guid? group_id
         {
@@ -24,18 +24,8 @@ namespace UMC.Data.Entities
             get;
             set;
         }
-        public string Caption
-        {
-            get;
-            set;
-        }
-        public string Location
-        {
-            get;
-            set;
-        }
 
-        public DateTime? UploadDate
+        public int? UploadTime
         {
             get;
             set;

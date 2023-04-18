@@ -29,7 +29,7 @@ namespace UMC.Data
             int size = 26 - (i - 1) * 2;
 
             var cell = UICell.Create("CMSText", new WebMeta().Put("text", text.Substring(i).Trim()).Put("Key", i));
-            cell.Format.Put("text", "{text}");
+            cell.Formats.Put("text", "{text}");
             cell.Style.Bold().Size(size);
             cells.Add(cell);
         }
@@ -79,7 +79,7 @@ namespace UMC.Data
                 {
                     data.Put("type", type);
                 }
-                cell.Format.Put("text", sb.ToString());
+                cell.Formats.Put("text", sb.ToString());
                 cell.Style.Copy(style);
 
                 return cell;
@@ -573,7 +573,7 @@ namespace UMC.Data
                 }
                 var cell = UICell.Create(data["type"] ?? "CMSText", data);
                 data.Remove("type");
-                cell.Format.Put("text", sb.ToString());
+                cell.Formats.Put("text", sb.ToString());
                 cell.Style.Copy(style);
                 cells.Add(cell);
                 data = new WebMeta();
@@ -698,36 +698,6 @@ namespace UMC.Data
 
                                             continue;
                                         }
-                                    }
-                                    else
-                                    {
-                                        //if (String.IsNullOrEmpty(content.Trim()) == false)
-                                        //{
-                                        //    AppendData();
-
-                                        //    if (webRel.ContainsKey(content))
-                                        //    {
-                                        //        style.Name("m" + data.Count.ToString(), new UIStyle().Click(new UIClick(webRel[content]) { Key = "Url" }));
-                                        //    }
-                                        //    else
-                                        //    {
-                                        //        var click = new UIClick(content) { Key = "Url" };
-                                        //        this.links.Add(click);
-                                        //        style.Name("m" + data.Count.ToString(), new UIStyle().Click(click));
-
-                                        //    }
-                                        //    data.Put("m" + data.Count.ToString(), content);
-                                        //}
-                                        //else
-                                        //{
-                                        dataText.Append("[");
-                                        dataText.Append(content);
-                                        dataText.Append("]");
-                                        //}
-
-                                        index = end + 1;
-
-                                        continue;
                                     }
 
                                 }
@@ -974,7 +944,7 @@ namespace UMC.Data
 
                                     var cell = UICell.Create("CMSCode", new WebMeta().Put("code", content).Put("type", htype));
 
-                                    cell.Format.Put("text", "{code}");
+                                    cell.Formats.Put("text", "{code}");
 
 
                                     cells.Add(cell);

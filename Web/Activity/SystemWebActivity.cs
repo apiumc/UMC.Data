@@ -25,7 +25,7 @@ namespace UMC.Web.Activity
                 if (form.ContainsKey("limit") == false)
                 {
                     this.Context.Send(new UISectionBuilder(request.Model, request.Command)
-                        .RefreshEvent("Config")
+                        .RefreshEvent($"{request.Model}.{request.Command}")
                         .Builder(), true);
 
                 }
@@ -35,24 +35,13 @@ namespace UMC.Web.Activity
 
                 var ui = UISection.Create(title);
                 var webr = UMC.Data.WebResource.Instance();
-                //var appKey = UMC.Security.Principal.Current.AppKey ?? Guid.Empty;
-                //if (appKey == Guid.Empty)
-                //{
-                    var appID = webr.Provider["appId"];
-                    var appSecret = webr.Provider["appSecret"];
-                    ui.AddCell("授权码", String.IsNullOrEmpty(appID) ? "去授权" : "去查看", new UIClick().Send(request.Model, "License")); 
-                    ui.AddCell("检验码", String.IsNullOrEmpty(appSecret) ? "未设置" : "已设置", new UIClick().Send(request.Model, "License"));
 
-                    ui.NewSection().AddCell('\uea04', "安全码", "用于应用交互效验", new UIClick(new WebMeta().Put(d, "APPSECRET")).Send(request.Model, request.Command));
-                //}
-                //else
-                //{
-                //    ui.AddCell("授权码", UMC.Data.Utility.Guid(appKey))
-                //    .AddCell('\uea04', "安全码", "用于应用交互效验", new UIClick(new WebMeta().Put(d, "APPSECRET")).Send(request.Model, request.Command));
-                //}
+                var appID = webr.Provider["appId"];
+                var appSecret = webr.Provider["appSecret"];
+                ui.AddCell("授权码", String.IsNullOrEmpty(appID) ? "去授权" : "去查看", new UIClick().Send(request.Model, "License"));
+                ui.AddCell("检验码", String.IsNullOrEmpty(appSecret) ? "未设置" : "已设置", new UIClick().Send(request.Model, "License"));
 
-
-                var cfg2 = DataFactory.Instance().Configuration("UMC") ?? new ProviderConfiguration();
+                var cfg2 = Reflection.Configuration("UMC");
 
                 var u2 = ui.NewSection();
                 u2.Header.Put("text", "云模块");
@@ -76,53 +65,42 @@ namespace UMC.Web.Activity
                 }
                 ui.UIFootBar = new UIFootBar() { IsFixed = true };
                 ui.UIFootBar.AddText(new UIEventText("配置云模块").Click(new UIClick("New").Send(request.Model, request.Command)),
-                    new UIEventText("重置安全码").Click(new UIClick("RESET").Send(request.Model, request.Command)).Style(new UIStyle().BgColor()));
+                    new UIEventText("授权信息").Click(new UIClick().Send(request.Model, "License")).Style(new UIStyle().BgColor()));
                 response.Redirect(ui);
                 return this.DialogValue("New");
             });
             switch (svalue)
             {
-                case "Command":
-                    var Command = this.AsyncDialog("Command", g =>
+                case "MAPPING":
                     {
-                        var fm = new UIFormDialog() { Title = "触发指令" };
+                        var cfg2 = Reflection.Configuration("UMC");
+                        var data3 = new System.Data.DataTable();
+                        data3.Columns.Add("model");
+                        data3.Columns.Add("cmd");
+                        data3.Columns.Add("text");
+                        data3.Columns.Add("root");
 
-                        fm.AddText("模块", "Model", "").PlaceHolder("触发的模块");
-                        fm.AddText("指令", "Command", "").PlaceHolder("触发的指令");
-                        fm.AddText("参数", "Send", "").NotRequired().PlaceHolder("触发的参数");
-                        return fm;
-                    });
-                    var send = Command["Send"];
-                    if (String.IsNullOrEmpty(send) == false)
-                    {
 
-                        response.Redirect(Command["Model"], Command["Command"], Command["Send"]);
+                        for (var i = 0; i < cfg2.Count; i++)
+                        {
+                            var p = cfg2[i];
+                            var cmd = p.Type;
+
+                            if (String.IsNullOrEmpty(p.Type))
+                            {
+                                cmd = "*";
+                            }
+
+                            data3.Rows.Add(p.Name, cmd, p["desc"], p["root"]);
+
+                        }
+
+                        this.Context.Send($"{request.Model}.{request.Command}", new WebMeta().Put("data", data3), true);
                     }
-                    else
-                    {
-
-                        response.Redirect(Command["Model"], Command["Command"]);
-                    }
-                    break;
-                case "RESETAPPSECRET":
-                    this.Context.Send("Config", false);
-                    this.Prompt("重置安全码", "AppSecret：" + Data.WebResource.Instance().AppSecret(true));
-
-                    break;
-                case "RESET":
-                    response.Redirect(request.Model, request.Command, new UMC.Web.UIConfirmDialog("重置安全码后，老的安全码将会过期，您确认重置吗?") { DefaultValue = "RESETAPPSECRET" });
-                    break;
-                case "APPSECRET":
-                    this.Prompt("安全码", "AppSecret：" + Data.WebResource.Instance().AppSecret());
-                    break;
-                case "SCANNING":
-                    Reflection.Instance().ScanningClass();
-                    Utility.Writer(Utility.MapPath("App_Data/register.net"), JSON.Serialize(new WebMeta().Put("time", UMC.Data.Utility.TimeSpan()).Put("data", WebRuntime.RegisterCls())), false);
-                    this.Prompt("已从新扫描类型");
                     break;
             }
 
-            var cfg = DataFactory.Instance().Configuration("UMC") ?? new ProviderConfiguration();
+            var cfg = Reflection.Configuration("UMC");
             var n = cfg[svalue] ?? Data.Provider.Create(String.Empty, String.Empty);
             var Settings = this.AsyncDialog("Settings", g =>
             {
@@ -136,39 +114,36 @@ namespace UMC.Web.Activity
                 }
                 fm.AddText("指令通配符", "type", n.Type);
                 fm.AddText("描述", "desc", n["desc"]);
-                fm.AddText("服务网址", "src", n["src"]);
-                fm.AddText("效验码", "secret", n["secret"]).NotRequired();
+                fm.AddText("服务站点", "root", n["root"]);
                 if (String.IsNullOrEmpty(n.Name) == false)
                 {
                     fm.AddCheckBox("", "Status", "NO").Put("移除", "DEL");
                 }
-                fm.Submit("确认", request, "Config");
+                fm.Submit("确认", $"{request.Model}.{request.Command}");
                 return fm;
             });
             var status = Settings["Status"] ?? "";
             if (status.Contains("DEL"))
             {
-                cfg.Providers.Remove(svalue);
+                cfg.Remove(svalue);
             }
             else
             {
-                var src = new Uri(Settings["src"]);
                 var p = Data.Provider.Create(Settings["name"] ?? svalue, Settings["type"]);
-                p.Attributes.Add("src", src.AbsoluteUri);
+                p.Attributes.Add("root", Settings["root"]);
                 p.Attributes.Add("desc", Settings["desc"]);
-                if (String.IsNullOrEmpty(Settings["secret"]) == false)
-                    p.Attributes.Add("secret", Settings["secret"]);
-                cfg.Providers[p.Name] = p;//.Add(p.Name, p);
+
+                cfg.Add(p);
             }
-            UMC.Data.ProviderConfiguration.Cache.Clear();
+          
 
 
-            DataFactory.Instance().Configuration("UMC", cfg);
+            Reflection.Configuration("UMC", cfg);
             var data2 = new System.Data.DataTable();
             data2.Columns.Add("model");
             data2.Columns.Add("cmd");
             data2.Columns.Add("text");
-            data2.Columns.Add("src");
+            data2.Columns.Add("root");
 
 
             for (var i = 0; i < cfg.Count; i++)
@@ -181,11 +156,11 @@ namespace UMC.Web.Activity
                     cmd = "*";
                 }
 
-                data2.Rows.Add(p.Name, cmd, p["desc"], p["src"]);
+                data2.Rows.Add(p.Name, cmd, p["desc"], p["root"]);
 
             }
 
-            this.Context.Send("Config", new WebMeta().Put("data", data2), false);
+            this.Context.Send($"{request.Model}.{request.Command}", new WebMeta().Put("data", data2), false);
 
             this.Prompt("配置成功");
 

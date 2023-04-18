@@ -1,127 +1,160 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
 using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Text;
 using UMC.Data;
 using UMC.Data.Entities;
-using UMC.Web.UI;
 using UMC.Web;
+using System.IO;
 
-namespace UMC.Web.Activity
+namespace UMC.Activities
 {
-
     class SystemDirActivity : WebActivity
     {
 
         public override void ProcessActivity(WebRequest request, WebResponse response)
         {
-            var prefix = this.AsyncDialog("dir", g =>
+            if (request.IsCashier == false)
             {
-                return this.DialogValue("/");
-            });
-            var dir = UMC.Data.Reflection.ConfigPath("Static\\" + prefix);
-            var media_id = this.AsyncDialog("media_id", "none");
-            if (String.Equals("none", media_id) == false)
-            {
-                var sourceKey = String.Format("TEMP/Static/{0}", media_id);
-                var http = new System.Net.Http.HttpClient();
-
-                UMC.Data.Utility.Copy(http.GetStreamAsync(new Uri("http://oss.365lu.cn/" + sourceKey)).Result, dir);
-                response.Redirect(new WebMeta().Put("src", "/" + prefix.Trim('\\', '/').Replace(System.IO.Path.DirectorySeparatorChar, '/')));
+                this.Prompt("只有管理员权限才可浏览服务器本地目录");
             }
-
-            if (prefix == "/")
+            var key = this.AsyncDialog("Key", g => this.DialogValue("Root"));
+            var file = this.AsyncDialog("File", g =>
             {
-                prefix = null;
-            }
-            var type = this.AsyncDialog("type", g =>
-            {
-                return this.DialogValue("list");
-            });
-            if (type == "Del")
-            {
-                if (request.IsMaster == false)
+                var dir = this.AsyncDialog("Dir", g =>
                 {
-                    this.Prompt("非管理员，只能查看");
+                    return this.DialogValue(UMC.Data.Reflection.ConfigPath("Static\\"));
+                });
+                var type = this.AsyncDialog("type", "File");
+                var filter = this.AsyncDialog("filter", "*.*");
+
+                var limit = this.AsyncDialog("limit", "none");
+                request.Arguments.Remove("limit");
+                if (limit == "none")
+                {
+                    this.Context.Send(new UISectionBuilder(request.Model, request.Command, request.Arguments)
+                        .CloseEvent("UI.Event")
+                            .Builder(), true);
                 }
-                var isDir = prefix.EndsWith(System.IO.Path.DirectorySeparatorChar + "");
-                this.AsyncDialog("Config", g => new UMC.Web.UIConfirmDialog(isDir ? "您确认删除文件夹吗" : "您确认删除文件吗"));
-                if (String.IsNullOrEmpty(prefix) == false)
+                UISection ui;
+
+                UISection ui2;
+
+                if (String.Equals(dir, "none"))
                 {
-                    if (isDir)
+                    var uTitle = new UITitle("资源浏览器");
+                    ui = UISection.Create(uTitle);
+                    ui2 = ui;
+
+                    var des = System.IO.DriveInfo.GetDrives();
+                    foreach (var dr in des)
                     {
+                        if (dr.RootDirectory.FullName.StartsWith("/System") == false)
+                        {
 
-                        System.IO.Directory.Delete(dir, true);
+                            var data = new WebMeta().Put("text", dr.RootDirectory.Name).Put("Icon", "\uf0a0");
+                            var cell = UICell.Create("UI", data);
+                            ui2.Add(cell);
+                            data.Put("click", new UIClick(new WebMeta().Put("Dir", dr.RootDirectory.FullName)) { Key = "Query" });
+                            cell.Style.Name("text").Color(0x111);
+
+                        }
                     }
-                    else
-                    {
-
-                        System.IO.File.Delete(dir);
-                    }
-                    this.Context.Send("reload", true);
-                }
-            }
-
-            if (System.IO.Directory.Exists(dir) == false)
-            {
-                response.Redirect(new WebMeta().Put("prefix", (string)prefix));
-            }
-            var paths = System.IO.Directory.GetDirectories(dir);
-
-            var dirs = new List<WebMeta>();
-            var path = UMC.Data.Reflection.ConfigPath("Static\\");
-            foreach (var file in paths)
-            {
-                var key = file.Substring(path.Length);
-                var name = key;
-                if (string.IsNullOrEmpty(prefix) == false)
-                {
-                    name = key.Substring(prefix.Length);
-                }
-
-                dirs.Add(new WebMeta().Put("name", name.Trim(System.IO.Path.DirectorySeparatorChar)).Put("dir", key + System.IO.Path.DirectorySeparatorChar));
-
-            }
-
-
-
-            var Summaries = System.IO.Directory.GetFiles(dir);
-            var files = new List<WebMeta>();
-            foreach (var file in Summaries)
-            {
-                var key = file.Substring(path.Length);
-                var summ = new System.IO.FileInfo(file);
-                var name = key;
-
-                if (string.IsNullOrEmpty(prefix) == false)
-                {
-                    name = key.Substring(prefix.Length);
-                }
-
-                files.Add(new WebMeta().Put("href", new Uri(request.Url, "/" + key.Replace(System.IO.Path.DirectorySeparatorChar, '/')).AbsoluteUri).Put("size", summ.Length).Put("name", name.Trim(System.IO.Path.DirectorySeparatorChar), "file", key).Put("time", summ.LastWriteTime.ToLocalTime().ToString()));
-            }
-
-            var data = new WebMeta().Put("dir", dirs).Put("files", files).Put("prefix", (string)prefix);
-            if (string.IsNullOrEmpty((string)prefix) == false)
-            {
-                var pre = prefix.Trim(System.IO.Path.DirectorySeparatorChar);
-                var index = pre.LastIndexOf(System.IO.Path.DirectorySeparatorChar);
-                if (index > -0)
-                {
-                    data.Put("pre", pre.Substring(0, index + 1));
-                    data.Put("name", prefix.Substring(index + 1).Trim(System.IO.Path.DirectorySeparatorChar));
                 }
                 else
                 {
-                    data.Put("name", prefix.Trim(System.IO.Path.DirectorySeparatorChar));
+                    var dirInfo = new System.IO.DirectoryInfo(dir);
+                    ui = UISection.Create(new UITitle(dirInfo.Name));
+                    if (dirInfo.Parent != null)
+                    {
+                        ui.AddCell('\uf112', "上级目录", "../", new UIClick("Dir", dirInfo.Parent.FullName) { Key = "Query" });
+                    }
+                    else
+                    {
+                        ui.AddCell('\uf112', "上级目录", "../", new UIClick("Dir", "none") { Key = "Query" });
+                    }
+                    ui2 = ui.NewSection();
 
+                    try
+                    {
+                        var dirs = dirInfo.GetDirectories();
+                        foreach (var dr in dirs)
+                        {
+                            if (dr.Name[0] != '.')
+                            {
+                                var data = new WebMeta().Put("text", dr.Name).Put("Icon", "\uf115");
+                                var cell = UICell.Create("UI", data);
+                                ui2.Add(cell);
+
+                                data.Put("click", new UIClick(new WebMeta().Put("Dir", dr.FullName)) { Key = "Query" });
+                                switch (type)
+                                {
+                                    case "File":
+                                        break;
+                                    default:
+                                        cell.Style.Name("text").Click(new UIClick(new WebMeta().Put("Key", key).Put("File", dr.FullName)).Send(request.Model, request.Command)).Color(0x337ab7);
+                                        break;
+                                }
+
+                            }
+
+
+                        }
+                    }
+                    catch
+                    {
+
+                    }
+                    switch (type)
+                    {
+                        case "File":
+
+                            var uifile = ui.NewSection();
+                            try
+                            {
+                                var filters = filter.Split(',');
+                                var files = dirInfo.GetFiles();
+
+                                foreach (var file in files)
+                                {
+                                    if (file.Name[0] != '.')
+                                    {
+                                        foreach (var f in filters)
+                                        {
+                                            if (f == "*.*" || f.EndsWith(file.Extension, StringComparison.CurrentCultureIgnoreCase))
+                                            {
+                                                uifile.AddCell('\uf0f6', file.Name, Utility.GetBitSize(file.Length), new UIClick(new WebMeta().Put("Key", key).Put("File", file.FullName)).Send(request.Model, request.Command));
+                                                break;
+                                            }
+                                        }
+
+                                    }
+                                }
+                            }
+                            catch
+                            {
+
+                            }
+                            break;
+                    }
                 }
-            }
-            response.Redirect(data);
+
+
+
+                response.Redirect(ui);
+                return this.DialogValue("none");
+
+
+            }); ;
+            var dic = new System.IO.DirectoryInfo(file);// UMC.Data.DataFactory.Instance().Organize(UMC.Data.Utility.IntParse(OrganizeId, 0));
+
+            this.Context.Send(new UMC.Web.WebMeta().UIEvent(key, new ListItem()
+            {
+                Value = dic.FullName,
+                Text = dic.Name
+            }), true); ;
 
         }
-
     }
-
 }

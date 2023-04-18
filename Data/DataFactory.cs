@@ -11,10 +11,28 @@ namespace UMC.Data
     {
         static DataFactory()
         {
-            HotCache.Register<Config>("ConfKey");
-            HotCache.Register<Wildcard>("WildcardKey").IsFast = true;
+            UMC.Data.Reflection.Instance(new UMC.Security.Reflection(), UMC.Data.Reflection.Instance().Provider);
+            HotCache.Register<Account>("Name").Register("user_id", "Type");
+            HotCache.Register<Cache>("Id", "CacheKey");
+            HotCache.Register<Session>("SessionKey").Register("user_id", "SessionKey");
+
+            HotCache.Register<User>("Id").Register("Username");
             HotCache.Register<Password>("Key");
-            HotCache.Register<Session>("SessionKey").Register("user_id");
+            HotCache.Register<Organize>("Id").Register("ParentId", "Id");
+
+
+            HotCache.Register<OrganizeMember>("org_id", "user_id").Register("user_id", "org_id");
+            HotCache.Register<Authority>("Site", "Key");
+            HotCache.Register<Picture>("group_id");
+
+            HotCache.Register<UserToRole>("Site", "user_id", "Rolename").Register("Site", "Rolename", "user_id");
+            HotCache.Register<Role>("Site", "Rolename");
+            HotCache.Register<Config>("ConfKey");
+
+            HotCache.Register<Menu>("Site", "Id").Register("Site", "ParentId", "Id");
+            HotCache.Register<Keyword>("user_id", "Key").Register("user_id", "Time", "Key");
+
+
 
         }
         static DataFactory _Instance = new DataFactory();
@@ -31,6 +49,12 @@ namespace UMC.Data
             HotCache.Cache<Session>().Delete(session);
 
         }
+
+        public virtual void Delete(UserToRole session)
+        {
+            HotCache.Cache<UserToRole>().Delete(session);
+
+        }
         public virtual void Put(Session session)
         {
 
@@ -43,24 +67,24 @@ namespace UMC.Data
         }
         public virtual Session[] Session(Guid user_id)
         {
-            return Database.Instance().ObjectEntity<Session>()
-                     .Where.And().Equal(new Session
-                     {
-                         user_id = user_id,
-                     }).Entities.Query();
-            //return HotCache.Cache<Session>().Get(new Data.Entities.Session(), "user_id", user_id);
+            int index = 0;
+            return HotCache.Cache<Session>().Find(new Session
+            {
+                user_id = user_id,
+            }, index, out index);
+
         }
         public virtual Config Config(string key)
         {
-            return HotCache.Cache<Config>().Get(new Config { ConfKey = key });
+            return HotCache.Get(new Config { ConfKey = key });
         }
         public virtual void Put(Config cache)
         {
-            HotCache.Cache<Config>().Put(cache);
+            HotCache.Put(cache);
         }
         public virtual String Password(Guid key)
         {
-            var password = HotCache.Cache<Password>().Get(new Password { Key = key });
+            var password = HotCache.Get(new Password { Key = key });
 
             if (password != null && password.Body != null)
             {
@@ -69,11 +93,15 @@ namespace UMC.Data
             return null;
 
         }
+        public virtual void Delete(Config config)
+        {
+            HotCache.Delete(config);
+        }
         public virtual void Delete(Password password)
         {
             if (password.Key.HasValue)
             {
-                HotCache.Cache<Password>().Delete(new Password
+                HotCache.Delete(new Password
                 {
                     Key = password.Key
                 });
@@ -91,573 +119,458 @@ namespace UMC.Data
         }
         public virtual void Delete(Cache cache)
         {
-            Database.Instance().ObjectEntity<Data.Entities.Cache>().Where.And().Equal(new Data.Entities.Cache
+            HotCache.Cache<Cache>().Delete(new Data.Entities.Cache
             {
                 Id = cache.Id.Value,
                 CacheKey = cache.CacheKey ?? String.Empty
-            }).Entities.Delete();
+            });
         }
         public virtual void Delete(Organize organize)
         {
-            Database.Instance().ObjectEntity<Data.Entities.Organize>().Where.And().Equal(new Data.Entities.Organize
+            HotCache.Cache<Organize>().Delete(new Data.Entities.Organize
             {
-                Id = organize.Id
-            }).Entities.Delete();
+                Id = organize.Id.Value
+            });
         }
         public virtual void Delete(OrganizeMember organizeMember)
         {
-            Database.Instance().ObjectEntity<Data.Entities.OrganizeMember>().Where.And().Equal(new Data.Entities.OrganizeMember
-            {
-                user_id = organizeMember.user_id.Value,
-                org_id = organizeMember.org_id.Value
-            }).Entities.Delete();
+            HotCache.Cache<OrganizeMember>().Delete(organizeMember);
         }
 
         public virtual void Delete(Picture picture)
         {
-            Database.Instance().ObjectEntity<Data.Entities.Picture>().Where.And().Equal(new Picture { group_id = picture.group_id.Value }).Entities.Delete();
+
+            HotCache.Cache<Picture>().Delete(picture);
         }
-        public virtual void Put(SearchKeyword keyword)
+        public virtual void Put(Keyword keyword)
         {
-            if (String.IsNullOrEmpty(keyword.Keyword) == false && keyword.user_id.HasValue)
+            if (String.IsNullOrEmpty(keyword.Key) == false && keyword.user_id.HasValue)
             {
-                Database.Instance().ObjectEntity<Data.Entities.SearchKeyword>().Where.And()
-                    .Equal(new SearchKeyword { Keyword = keyword.Keyword, user_id = keyword.user_id })
-                    .Entities.IFF(e => e.Update(keyword) == 0, e => e.Insert(keyword));
+                keyword.Time = Utility.TimeSpan();
+                var hot = HotCache.Cache<Keyword>();
+                hot.Put(keyword);
+                var keyh = hot.Get(new Entities.Keyword { Key = keyword.Key, user_id = Guid.Empty });
 
-                Database.Instance().ObjectEntity<Data.Entities.SearchKeyword>().Where.And()
-                   .Equal(new SearchKeyword { Keyword = keyword.Keyword, user_id = Guid.Empty })
-                   .Entities.IFF(e => e.Update("{0}+{1}", new SearchKeyword { Time = 1 }) == 0, e =>
-                   {
-                       keyword.Time = 1;
-                       keyword.user_id = Guid.Empty;
-                       e.Insert(keyword);
-                   });
-
-
+                if (keyh == null)
+                {
+                    hot.Put(new Entities.Keyword { Key = keyword.Key, user_id = Guid.Empty, Time = 1 });
+                }
+                else
+                {
+                    hot.Put(new Entities.Keyword { Key = keyword.Key, user_id = Guid.Empty, Time = (keyh.Time ?? 0) + 1 });
+                }
             }
         }
-        public virtual SearchKeyword[] SearchKeyword(Guid userId)
+        public virtual Keyword[] Keyword(Guid userId)
         {
-
-            return Database.Instance().ObjectEntity<Data.Entities.SearchKeyword>().Where.And()
-                   .Equal(new SearchKeyword { user_id = userId }).Entities.Order.Desc(new SearchKeyword { Time = 0 })
-                   .Entities.Query(0, 20);
-
-
-
+            var hot = HotCache.Cache<Keyword>();
+            int index;
+            return hot.Find(new Keyword { user_id = userId }, true, 0, 20, out index);
         }
 
-        public virtual Cache Get(Guid id, string cacheKey)
+        public virtual Cache Cache(Guid id, string cacheKey)
         {
-            return Database.Instance().ObjectEntity<Data.Entities.Cache>().Where.And().Equal(new Data.Entities.Cache
+            return HotCache.Cache<Cache>().Get(new Data.Entities.Cache
             {
                 Id = id,
                 CacheKey = cacheKey ?? String.Empty
-            }).Entities.Single();
+            });
         }
 
 
         public virtual Picture[] Pictures(params Guid[] gid)
         {
-            if (gid.Length > 0)
-            {
-                return Database.Instance().ObjectEntity<Data.Entities.Picture>().Where.And().In(new Data.Entities.Picture
-                {
-                    group_id = gid[0]
-                }, gid).Entities.Query();
-            }
-            return new Picture[0];
+            int index;
+            return HotCache.Cache<Picture>().Find(new Data.Entities.Picture(), 0, 500, out index, "group_id", gid);
         }
 
         public virtual Picture Picture(Guid guid)
         {
-
-            return Database.Instance().ObjectEntity<Data.Entities.Picture>().Where.And().Equal(new Data.Entities.Picture
+            return HotCache.Cache<Picture>().Get(new Data.Entities.Picture
             {
                 group_id = guid
-            }).Entities.Single();
+            });
 
         }
-
-
-
         public virtual void Put(Cache cache)
         {
-            Database.Instance().ObjectEntity<Data.Entities.Cache>().Where.And().Equal(new Data.Entities.Cache
-            {
-                Id = cache.Id.Value,
-                CacheKey = cache.CacheKey ?? String.Empty
-            }).Entities.IFF(e => e.Update(cache) == 0, e => e.Insert(cache));
+            HotCache.Cache<Cache>().Put(cache);
+
         }
 
         public virtual void Put(Picture picture)
         {
-            Database.Instance().ObjectEntity<Data.Entities.Picture>().Where.And().Equal(new Data.Entities.Picture
-            {
-                group_id = picture.group_id.Value
-            }).Entities.IFF(e => e.Update(picture) == 0, e => e.Insert(picture));
+            HotCache.Cache<Picture>().Put(picture);
+
         }
-        public virtual User[] Search(User search, out int total, int start, int limit)
+        public virtual Authority[] Search(Authority search, int start, int limit, out int nextIndex)
         {
-            var entity = Database.Instance().ObjectEntity<Data.Entities.User>();
-
-            if (search.Flags.HasValue)
-            {
-                entity.Where.And("(Flags&{0})={0}", search.Flags).And().Contains().Or().Like(new UMC.Data.Entities.User
-                {
-                    Username = search.Username,
-                    Alias = search.Alias
-                });
-            }
-            else
-            {
-                entity.Where.Contains().Or().Like(new UMC.Data.Entities.User { Username = search.Username, Alias = search.Alias });
-
-            }
-
-            total = entity.Count();
-            if (total == 0)
-            {
-                return new Entities.User[0];
-            }
-            return entity.Query(start, limit);
+            return HotCache.Cache<Authority>().Find(search, start, limit, out nextIndex);
 
         }
-        public virtual bool Put(User user)
+        public virtual User[] Search(User search, int start, int limit, out int nextIndex)
+        {
+            var seacher = HotCache.Cache<User>().Search<User>();
+
+            seacher.And().Equal(new Entities.User { IsDisabled = search.IsDisabled, Flags = search.Flags });
+            seacher.Or().Like(new UMC.Data.Entities.User
+            {
+                Username = search.Username,
+                Alias = search.Alias
+            });
+
+            return seacher.Query(new User(), start, limit, out nextIndex);
+        }
+        public virtual void Put(User user)
         {
             if (user.Id.HasValue)
             {
-                bool s = true;
-                Database.Instance().ObjectEntity<Data.Entities.User>().Where.And().Equal(new Data.Entities.User
-                {
-                    Id = user.Id.Value
-                }).Entities.IFF(e => e.Update(UMC.Data.Reflection.PropertyToDictionary(user)) == 0,
-                    e =>
-                    {
-                        if (String.IsNullOrEmpty(user.Username) == false)
-                        {
-                            e.Insert(user);
-                        }
-                        else
-                        {
-                            s = false;
-                        }
-                    });
-                return s;
+                HotCache.Cache<User>().Put(user);
             }
             else if (String.IsNullOrEmpty(user.Username) == false)
             {
-                return Database.Instance().ObjectEntity<Data.Entities.User>().Where.And().Equal(new Data.Entities.User
+                var u = HotCache.Cache<User>().Get(new Entities.User { Username = user.Username });
+                if (u != null)
                 {
-                    Username = user.Username
-                }).Entities.Update(UMC.Data.Reflection.PropertyToDictionary(user)) > 0;
+                    user.Id = u.Id;
+                    HotCache.Cache<User>().Put(user);
+                }
             }
-            return false;
         }
 
         public virtual void Put(Role role)
         {
-            Database.Instance().ObjectEntity<Data.Entities.Role>().Where.And().In(new Data.Entities.Role
+            if (role.Site.HasValue == false)
             {
-                Rolename = role.Rolename
-            }).Entities.IFF(e => e.Update(role) == 0, e => e.Insert(role));
-        }
-
-        public virtual void Put(Guid userid, params Role[] roles)
-        {
-            var rEntity = Database.Instance().ObjectEntity<Data.Entities.UserToRole>().Where.And().In(new Data.Entities.UserToRole
-            {
-                user_id = userid
-            }).Entities;
-            var ls = new List<UserToRole>();
-            foreach (var v in roles)
-            {
-                ls.Add(new UserToRole { Rolename = v.Rolename, user_id = userid });
+                role.Site = 0;
 
             }
-            rEntity.Delete();
-            if (ls.Count > 0)
-            {
-                rEntity.Insert(ls.ToArray());
+            HotCache.Cache<Role>().Put(role);
 
-            }
         }
 
-        public virtual Role Role(string rolename)
+        public virtual void Put(UserToRole userToRole)
         {
-            return Database.Instance().ObjectEntity<Data.Entities.Role>().Where.And().In(new Data.Entities.Role
+            HotCache.Cache<UserToRole>().Put(userToRole);
+
+        }
+
+        public virtual Role Role(int site, string rolename)
+        {
+            return HotCache.Cache<Role>().Get(new Data.Entities.Role
             {
+                Site = site,
                 Rolename = rolename
-            }).Entities.Single();
+            });
+
         }
-        public virtual Role[] Roles()
+        public virtual Role[] Roles(int site)
         {
-            return Database.Instance().ObjectEntity<Data.Entities.Role>().Query();
+            int index;
+            return HotCache.Cache<Role>().Find(new Role { Site = site }, 0, out index);
         }
 
 
-        public virtual Role[] Roles(Guid userid)
+        public virtual string[] Roles(Guid userid, int site)
         {
-            var rls = new List<Role>();
-            Database.Instance().ObjectEntity<Data.Entities.UserToRole>().Where.And().Equal(new UserToRole { user_id = userid }).Entities
-                .Query(r =>
-                {
-                    rls.Add(new Entities.Role { Rolename = r.Rolename });
-                });
+
+            var ut = HotCache.Cache<UserToRole>();
+            int index;
+            var rows = ut.Find(new UserToRole { user_id = userid, Site = site }, 0, out index);
+
+            var rls = new List<String>();
+            foreach (var r in rows)
+            {
+
+                rls.Add(r.Rolename);
+            };
 
             return rls.ToArray();
         }
 
         public virtual User User(string username)
         {
-            return Database.Instance().ObjectEntity<Data.Entities.User>().Where.And().In(new Data.Entities.User
+            return HotCache.Cache<User>().Get(new Data.Entities.User
             {
                 Username = username
-            }).Entities.Single();
+            });
         }
 
         public virtual User User(Guid userId)
         {
-            return Database.Instance().ObjectEntity<Data.Entities.User>().Where.And().In(new Data.Entities.User
+            return HotCache.Cache<User>().Get(new Data.Entities.User
             {
                 Id = userId
-            }).Entities.Single();
+            });
+
+        }
+        public virtual User[] Users(int site, string roleName)
+        {
+            int next;
+            var rols = HotCache.Cache<UserToRole>().Find(new UserToRole { Site = site, Rolename = roleName }, 0, out next);
+            var ks = new List<String>();
+            foreach (var k in rols)
+            {
+                ks.Add(k.Rolename);
+
+            }
+            return Users(ks.ToArray());
         }
 
         public virtual User[] Users(params Guid[] userIds)
         {
-            return Database.Instance().ObjectEntity<Data.Entities.User>().Where.And().In(new Data.Entities.User
-            {
-                Id = userIds[0]
-            }, userIds).Entities.Query();
+            return HotCache.Cache<User>().Find(new User { }, "Id", userIds);
         }
         public virtual User[] Users(Data.Entities.Organize organize)
         {
+            int index = 0;
+            var ut = HotCache.Cache<OrganizeMember>().Find(new OrganizeMember { org_id = organize.Id.Value }, 0, out index)
+                .OrderBy(r => r.Seq ?? 0);
             var ids = new List<Guid>();
-            Database.Instance().ObjectEntity<Data.Entities.OrganizeMember>()
-                .Where.And().In(new OrganizeMember { org_id = organize.Id.Value }).Entities
-                .Order.Asc(new OrganizeMember { Seq = 0 }).Entities.Query(dr => ids.Add(dr.user_id.Value));
+
+            foreach (var k in ut)
+            {
+                ids.Add(k.user_id.Value);
+
+            }
             if (ids.Count > 0)
             {
-                return Users(ids.ToArray()).OrderBy(r => ids.IndexOf(r.Id.Value)).ToArray();
+                return Users(ids.ToArray()).OrderBy(r => ids.FindIndex(id => id == r.Id.Value)).ToArray();
             }
             return new User[0];
 
         }
         public virtual User[] Users(params string[] names)
         {
-            return Database.Instance().ObjectEntity<Data.Entities.User>().Where.And().In(new Data.Entities.User
+            if (names.Length > 0)
             {
-                Username = names[0]
-            }, names).Entities.Query();
+                return HotCache.Cache<User>().Find(new User { }, "Username", names);
+            }
+            return new User[0];
         }
         public virtual void Delete(Role role)
         {
-            if (String.IsNullOrEmpty(role.Rolename) == false)
+            if (String.IsNullOrEmpty(role.Rolename) == false && role.Site.HasValue)
             {
-                Database.Instance().ObjectEntity<Data.Entities.Role>().Where.And().In(new Data.Entities.Role
-                {
-                    Rolename = role.Rolename
-                }).Entities.Delete();
+                HotCache.Cache<Role>().Delete(role);
             }
         }
         public virtual void Put(Account account)
         {
             if (String.IsNullOrEmpty(account.Name) == false)
             {
-                Database.Instance().ObjectEntity<Data.Entities.Account>().Where.And().In(new Data.Entities.Account
-                {
-                    Name = account.Name
-                }).Entities.IFF(e => e.Update(account) == 0, e =>
-                {
-                    e.Insert(account);
-                });
+                HotCache.Cache<Account>().Put(account);
+
             }
+
+        }
+        public virtual Account Account(Guid user_id, int type)
+        {
+            return HotCache.Get(new Account { user_id = user_id, Type = type });//, 0, out index);
+
 
         }
         public virtual Account[] Account(Guid user_id)
         {
-            return Database.Instance().ObjectEntity<Data.Entities.Account>().Where.And().Equal(new Data.Entities.Account
-            {
-                user_id = user_id
-            }).Entities.Query();
+            int index;
+            return HotCache.Cache<Account>().Find(new Account { user_id = user_id }, 0, out index);
+
 
         }
-        public virtual Account Account(String name, int type)
+        public virtual Account Account(String name)
         {
+            return HotCache.Cache<Account>().Get(new Entities.Account { Name = name });
 
-            return Database.Instance().ObjectEntity<Data.Entities.Account>().Where.And().Equal(new Data.Entities.Account
-            {
-                Name = name,
-                Type = type
-            }).Entities.Single();
         }
         public virtual Account[] Account(params String[] names)
         {
 
             if (names.Length > 0)
             {
-                return Database.Instance().ObjectEntity<Data.Entities.Account>().Where.And().In(new Data.Entities.Account
-                {
-                    Name = names[0]
-                }, names).Entities.Query();
+                int index;
+                return HotCache.Cache<Account>().Find(new Account { }, 0, out index, "Name", names);
+
             }
             return new Account[0];
         }
 
-        public virtual void Delete(Wildcard wildcard)
+        public virtual void Delete(Authority wildcard)
         {
-            if (String.IsNullOrEmpty(wildcard.WildcardKey) == false)
+
+            HotCache.Cache<Authority>().Delete(wildcard);
+
+        }
+
+        public virtual Authority[] Authority(int site, params string[] wildcards)
+        {
+            if (wildcards.Length > 0)
             {
-                HotCache.Cache<Wildcard>().Delete(new Entities.Wildcard { WildcardKey = wildcard.WildcardKey });
+                return HotCache.Cache<Authority>().Find(new Entities.Authority { Site = site }, "Key", wildcards);
             }
-        }
-
-        public virtual Wildcard[] Wildcard(params string[] wildcards)
-        {
-            var list = new List<Wildcard>();
-            foreach (var key in wildcards)
+            else
             {
-                var wild = HotCache.Cache<Wildcard>().Get(new Entities.Wildcard { WildcardKey = key });
-                if (wild != null)
-                {
-                    list.Add(wild);
-                }
+                return new Authority[0];
             }
-            return list.ToArray();
 
         }
 
-        public virtual Wildcard Wildcard(string wildcardKey)
+        public virtual Authority Authority(int site, string wildcardKey)
         {
-            return HotCache.Cache<Wildcard>().Get(new Entities.Wildcard { WildcardKey = wildcardKey });
+            return HotCache.Cache<Authority>().Get(new Entities.Authority { Key = wildcardKey, Site = site });
 
 
         }
 
-        public virtual void Put(Wildcard wildcard)
+        public virtual void Put(Authority wildcard)
         {
-            HotCache.Cache<Wildcard>().Put(wildcard);
-
-        }
-        public virtual void Post(Session session)
-        {
-
-            HotCache.Remove(session);
-            HotCache.Synchronize<Session>(new String[] { "SessionKey" }, new object[] { session.SessionKey });
-            UMC.Data.Database.Instance().ObjectEntity<Session>()
-            .Where.And().Equal(new Session
+            if (String.IsNullOrEmpty(wildcard.Key) == false && wildcard.Site.HasValue)
             {
-                SessionKey = session.SessionKey
-            }).Entities
-            .IFF(e => e.Update(session) == 0, e => e.Insert(session));
+                HotCache.Cache<Authority>().Put(wildcard);
+            }
 
-        }
-        public virtual ProviderConfiguration Configuration(string configKey)
-        {
-            var file = Reflection.AppDataPath(String.Format("UMC\\{0}.xml", configKey.ToLower()));
-            return ProviderConfiguration.GetProvider(file);
-        }
-        public virtual void Configuration(string configKey, ProviderConfiguration providerConfiguration)
-        {
-            var file = Reflection.AppDataPath(String.Format("UMC\\{0}.xml", configKey.ToLower()));
-
-            providerConfiguration.WriteTo(file);
         }
 
         public virtual void Put(params Menu[] menus)
         {
-            menus.Any(d =>
+
+            foreach (var m in menus)
             {
-                if (d.Site.HasValue == false)
+                if (m.Site.HasValue == false)
                 {
-                    d.Site = 0;
+                    m.Site = 0;
                 }
-                return false;
-            });
-
-            Data.Database.Instance().ObjectEntity<Menu>().Insert(menus);//.Commit();
-        }
-        public virtual Click Click(int code)
-        {
-            var storeEntity = Data.Database.Instance().ObjectEntity<Data.Entities.Click>();
-            return storeEntity.Where.And().Equal(new Data.Entities.Click { Code = code }).Entities.Single();
-        }
-        public virtual void Put(Click click)
-        {
-            var storeEntity = Data.Database.Instance().ObjectEntity<Data.Entities.Click>();
-            storeEntity.Where.And().Equal(new Data.Entities.Click { Code = click.Code });
-            //var c = new Data.Entities.Click
-            //{
-            //    Query = Data.JSON.Serialize(ob),
-            //    Code = click.,
-            //    Quality = qty
-            //};
-            storeEntity.IFF(e => e.Update(click) == 0, e => e.Insert(click));
-        }
-        public virtual void Delete(Click click)
-        {
-            var storeEntity = Data.Database.Instance().ObjectEntity<Data.Entities.Click>();
-            storeEntity.Where.And().Equal(new Data.Entities.Click { Code = click.Code }).Entities.Delete();
-        }
-        public virtual Number Number(string codeKey)
-        {
-            var storeEntity = Data.Database.Instance().ObjectEntity<Data.Entities.Number>();
-            return storeEntity.Where.And().Equal(new Data.Entities.Number { CodeKey = codeKey }).Entities.Single();
-        }
-
-        public virtual void Put(Number number)
-        {
-
-            Data.Database.Instance().ObjectEntity<Number>().Where.And().Equal(new Data.Entities.Number { CodeKey = number.CodeKey })
-               .Entities.IFF(e => e.Update(number) == 0, e => e.Insert(number));
-
-
+                HotCache.Cache<Menu>().Put(m);
+            }
         }
         public virtual void Put(Menu menu)
         {
             if (menu.Id.HasValue)
             {
-
-                Data.Database.Instance().ObjectEntity<Menu>().Where.And().Equal(new Data.Entities.Menu { Id = menu.Id })
-                   .Entities.IFF(e => e.Update(menu) == 0, e =>
-                   {
-                       if (menu.Site.HasValue == false)
-                       {
-                           menu.Site = 0;
-                       }
-                       e.Insert(menu);
-                   });
+                if (menu.Site.HasValue == false)
+                {
+                    menu.Site = 0;
+                }
+                HotCache.Cache<Menu>().Put(menu);
             }
         }
 
-        public virtual Menu Menu(Guid id)
+        public virtual Menu Menu(int site, int id)
         {
-            return Data.Database.Instance().ObjectEntity<Menu>().Where.And().Equal(new Data.Entities.Menu { Id = id })
-                     .Entities.Single();
+            return HotCache.Cache<Menu>().Get(new Data.Entities.Menu { Site = site, Id = id });
         }
 
         public virtual void Delete(Menu menu)
         {
-            if (menu.Id.HasValue || menu.Site.HasValue || menu.ParentId.HasValue)
-            {
-                Data.Database.Instance().ObjectEntity<Menu>().Where.And().Equal(new Data.Entities.Menu { Id = menu.Id, ParentId = menu.ParentId, Site = menu.Site })
-                    .Entities.Delete();
-            }
+            HotCache.Cache<Menu>().Delete(menu);
+
         }
 
         public virtual Menu[] Menu(int site)
         {
-            return Data.Database.Instance().ObjectEntity<Menu>().Where.And().Equal(new Data.Entities.Menu { Site = site })
-                     .Entities.Query();
+            int index = 0;
+            return HotCache.Cache<Menu>().Find(new Entities.Menu { Site = site }, 0, out index);
+
         }
 
-        public virtual Menu[] Menu(Guid parentId, int site)
+        public virtual Menu[] Menus(int site, int parentId)
         {
-            return Data.Database.Instance().ObjectEntity<Menu>().Where.And().Equal(new Data.Entities.Menu { ParentId = parentId, Site = site })
-                     .Entities.Query();
+            int index = 0;
+            return HotCache.Cache<Menu>().Find(new Entities.Menu { Site = site, ParentId = parentId }, 0, out index);
         }
 
-        public virtual Menu[] Menu(string searchKey, int type)
-        {
-            return Data.Database.Instance().ObjectEntity<Menu>().Where.And().Equal(new Data.Entities.Menu { Site = type })
-                .And().Like(new Menu { Caption = searchKey })
-                     .Entities.Query();
-        }
 
         public virtual void Put(params Role[] roles)
         {
-            Database.Instance().ObjectEntity<Data.Entities.Role>().Insert(roles);
-        }
-
-
-        public virtual Organize Organize(Guid org_id)
-        {
-
-            return Database.Instance().ObjectEntity<Organize>()
-                         .Where.And().Equal(new Organize
-                         {
-                             Id = org_id
-                         }).Entities.Single();
-        }
-        public virtual Organize[] Organize(params Guid[] org_id)
-        {
-            if (org_id.Length > 0)
+            var hotM = HotCache.Cache<Role>();
+            foreach (var r in roles)
             {
-
-                return Database.Instance().ObjectEntity<Organize>()
-                         .Where.And().In(new Organize
-                         {
-                             Id = org_id[0]
-                         }, org_id).Entities.Query().OrderBy(r => r.Seq ?? 0).ToArray();
+                if (r.Site.HasValue)
+                    hotM.Put(r);
+            }
+        }
 
 
+        public virtual Organize Organize(int org_id)
+        {
+            return HotCache.Cache<Organize>().Get(new Entities.Organize { Id = org_id });
 
+        }
+        public virtual Organize[] Organize(params int[] org_ids)
+        {
+            if (org_ids.Length > 0)
+            {
+                int index = 0;
+                return HotCache.Cache<Organize>().Find(new Entities.Organize { }, 0, out index, "Id", org_ids).OrderBy(r => r.Seq ?? 0).ToArray();
             }
             return new Organize[0];
         }
-        public virtual Organize[] Organizes(Guid parent_org_id)
+        public virtual Organize[] Organizes(int parent_org_id)
         {
+            int index = 0;
+            return HotCache.Cache<Organize>().Find(new Entities.Organize { ParentId = parent_org_id }, 0, out index).OrderBy(r => r.Seq ?? 0).ToArray();
 
-            return Database.Instance().ObjectEntity<Organize>()
-                         .Where.And().In(new Organize
-                         {
-                             ParentId = parent_org_id
-                         }).Entities.Query().OrderBy(r => r.Seq ?? 0).ToArray();
+        }
+        public virtual int[] OrganizesTree(Entities.User user)
+        {
+            int index = 0;
+            var orgs = HotCache.Cache<OrganizeMember>().Find(new OrganizeMember { user_id = user.Id.Value }, 0, out index);
 
+            var ls = new HashSet<int>();
+            var cache = HotCache.Cache<Organize>();
+            foreach (var org in orgs)
+            {
+                var org_id = org.org_id.Value;
+                int c = 0;
+                while (org_id != 0)
+                {
+                    c++;
+                    var p = cache.Get(new Organize { Id = org_id });
+                    if (p != null)
+                    {
+                        ls.Add(p.Id.Value);
+                        org_id = p.ParentId ?? 0;
+                    }
+                    if (c > 20)
+                    {
+                        break;
+                    }
 
+                }
+            }
+            return ls.ToArray();
         }
         public virtual Organize[] Organizes(Entities.User user)
         {
+            int index = 0;
+            var orgs = HotCache.Cache<OrganizeMember>().Find(new OrganizeMember { user_id = user.Id.Value }, 0, out index);
+            var ls = new List<int>();
+            foreach (var org in orgs)
+            {
+                ls.Add(org.org_id.Value);
 
-
-            return Database.Instance().ObjectEntity<Organize>()
-                         .Where.And().In("Id",
-                         Database.Instance().ObjectEntity<OrganizeMember>().Where.And()
-                         .In(new OrganizeMember { user_id = user.Id.Value }).Entities.Script(new OrganizeMember { org_id = Guid.Empty })
-                         ).Entities.Query().OrderBy(r => r.Seq ?? 0).ToArray();
-
+            }
+            if (ls.Count > 0)
+            {
+                return HotCache.Cache<Organize>().Find(new Organize { }, 0, out index, "Id", ls);
+            }
+            else
+            {
+                return new Organize[0];
+            }
         }
         public virtual void Put(OrganizeMember item)
         {
             if (item.org_id.HasValue && item.user_id.HasValue)
             {
-                Database.Instance().ObjectEntity<OrganizeMember>()
-               .Where.And().Equal(new OrganizeMember
-               {
-                   user_id = item.user_id.Value,
-                   org_id = item.org_id.Value
-               }).Entities.IFF(e => e.Update(item) == 0, e => e.Insert(item));
+                HotCache.Cache<OrganizeMember>().Put(item);
             }
         }
         public virtual void Put(Organize item)
         {
             if (item.Id.HasValue)
             {
-                Database.Instance().ObjectEntity<Organize>()
-               .Where.And().Equal(new Organize
-               {
-                   Id = item.Id.Value,
-               }).Entities.IFF(e => e.Update(item) == 0, e => e.Insert(item));
+                HotCache.Cache<Organize>().Put(item);
             }
-        }
-        /// <summary>
-        /// 数据同步
-        /// </summary>
-        /// <param name="flag"></param>
-        /// <param name="data"></param>
-        public virtual void SynchData(byte flag, string data)
-        {
-
-        }
-        public virtual void Put(Log log)
-        {
-            var writer = new System.IO.StringWriter();
-            UMC.Data.CSV.WriteLine(writer, log.Key, log.Path, log.Username, log.IP, log.Duration, log.Referrer, log.UserAgent, log.Time, log.Status, log.Context);
-
-            this.SynchData(0x02, writer.ToString());
-
         }
     }
 }

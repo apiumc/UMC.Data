@@ -29,9 +29,7 @@ namespace UMC.Web.Activity
                 var uTitle = new UITitle("选择图标");
                 var ui = UISection.Create(new UIHeader().Search("搜索"), uTitle);
                 var Keyword = (form["Keyword"] as string ?? String.Empty);
-                //var icons = new List<UIEventText>();
 
-                //Array es = System.Enum.GetValues(typeof(UIIcon));
                 UI.UIIcon icon = new UI.UIIcon();
                 for (int i = 0; i < iconNames.Length; i++)
                 {

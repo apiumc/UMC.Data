@@ -10,6 +10,7 @@ using System.IO;
 
 namespace UMC.Web.Activity
 {
+
     class SystemLogActivity : UMC.Web.WebActivity
     {
         public override void ProcessActivity(UMC.Web.WebRequest request, UMC.Web.WebResponse response)
@@ -20,11 +21,7 @@ namespace UMC.Web.Activity
                  return new UMC.Web.UITextDialog();
              });
 
-
-            var root = Utility.GetRoot(request.Url);
-            string path2 = UMC.Data.Utility.MapPath(String.Format("App_Data\\Static\\TEMP\\{0}\\", root));
-
-            var file = String.Format("{0}{1}.csv", path2, media_id);
+            var file = Reflection.ConfigPath(String.Format("Static\\TEMP\\{0}.csv", media_id));
             if (System.IO.File.Exists(file) == false)
             {
                 this.Prompt("不存在此日志");

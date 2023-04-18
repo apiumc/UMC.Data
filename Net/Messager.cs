@@ -13,7 +13,7 @@ namespace UMC.Net
         {
             public override void Send(String type, Hashtable content, string number)
             {
-
+                //Comparer
             }
 
             public override void Send(string content, params string[] to)
@@ -31,12 +31,9 @@ namespace UMC.Net
         {
             if (_instance == null)
             {
-                _instance = UMC.Data.Reflection.CreateObject("Message") as Message;
-                if (_instance == null)
-                {
-                    _instance = new Messager();
-                    _instance.Provider = Data.Provider.Create("Message", "UMC.Data.Message");
-                }
+                _instance = new Messager();
+                _instance.Provider = Data.Provider.Create("Message", "UMC.Data.Message");
+
             }
             return _instance;
         }

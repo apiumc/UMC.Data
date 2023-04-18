@@ -1,0 +1,8 @@
+Z:\sming\Projects\WebADNuke.Data\WebADNuke.Data\obj\Debug\netstandard1.6\WebADNuke.Data.csprojResolveAssemblyReference.cache
+Z:\sming\Projects\WebADNuke.Data\WebADNuke.Data\obj\Debug\netstandard1.6\WebADNuke.Data.csproj.CoreCompileInputs.cache
+Z:\sming\Projects\WebADNuke.Data\WebADNuke.Data\obj\Debug\netstandard1.6\WebADNuke.Data.AssemblyInfoInputs.cache
+Z:\sming\Projects\WebADNuke.Data\WebADNuke.Data\obj\Debug\netstandard1.6\WebADNuke.Data.AssemblyInfo.cs
+C:\DOC\Static\WebADNuke.Data\obj\Debug\netstandard1.6\WebADNuke.Data.csprojResolveAssemblyReference.cache
+C:\DOC\Static\WebADNuke.Data\obj\Debug\netstandard1.6\WebADNuke.Data.csproj.CoreCompileInputs.cache
+C:\DOC\Static\WebADNuke.Data\obj\Debug\netstandard1.6\WebADNuke.Data.AssemblyInfoInputs.cache
+C:\DOC\Static\WebADNuke.Data\obj\Debug\netstandard1.6\WebADNuke.Data.AssemblyInfo.cs

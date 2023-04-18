@@ -1,0 +1,4 @@
+C:\DOC\Static\WebADNuke.Data\obj\Debug\netstandard1.6\UMC.Data.csprojResolveAssemblyReference.cache
+C:\DOC\Static\WebADNuke.Data\obj\Debug\netstandard1.6\UMC.Data.csproj.CoreCompileInputs.cache
+C:\DOC\Static\WebADNuke.Data\obj\Debug\netstandard1.6\UMC.Data.AssemblyInfoInputs.cache
+C:\DOC\Static\WebADNuke.Data\obj\Debug\netstandard1.6\UMC.Data.AssemblyInfo.cs

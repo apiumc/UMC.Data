@@ -8,7 +8,7 @@ namespace UMC.Data.Entities
     /// <summary>
     /// 基础用户
     /// </summary>
-    public class User
+    public partial class User : Record
     {
         /// <summary>
         /// 用户Id
@@ -58,6 +58,7 @@ namespace UMC.Data.Entities
             get;
             set;
         }
+
         /// <summary>
         /// 密码验证失败次数
         /// </summary>
@@ -73,15 +74,24 @@ namespace UMC.Data.Entities
         {
             get; set;
         }
-        
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool? IsDisabled
+        {
+            get; set;
+        }
+
+
     }
-    public class Role
+
+    public partial class Role : Record
     {
-        //public Guid? Id
-        //{
-        //    get;
-        //    set;
-        //}
+        public int? Site
+        {
+            get;
+            set;
+        }
         public string Rolename
         {
             get;
@@ -93,8 +103,13 @@ namespace UMC.Data.Entities
             set;
         }
     }
-    public class UserToRole
+    public partial class UserToRole : Record
     {
+        public int? Site
+        {
+            get;
+            set;
+        }
         public String Rolename
         {
             get;
@@ -109,7 +124,7 @@ namespace UMC.Data.Entities
     /// <summary>
     /// 账户管理
     /// </summary>
-    public class Account
+    public partial class Account:Record
     {
         /// <summary>
         /// 用户名
@@ -155,6 +170,15 @@ namespace UMC.Data.Entities
 
         public string ConfigData
         {
+            get;
+            set;
+        }
+        /// <summary>
+        /// 来源
+        /// </summary>
+        public ulong? ForKey
+        {
+
             get;
             set;
         }

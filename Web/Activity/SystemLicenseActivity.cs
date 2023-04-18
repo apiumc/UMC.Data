@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
 using System.Text;
 using UMC.Data;
+using UMC.Data.Sql;
 using UMC.Net;
 
 namespace UMC.Web.Activity
@@ -10,42 +14,15 @@ namespace UMC.Web.Activity
 
     class SystemLicenseActivity : WebActivity
     {
-        static string GetSize(long b)
-        {
-
-            String[] units = new String[] { "B", "KB", "MB", "GB", "TB", "PB" };
-            long mod = 1000;
-            int i = 0;
-            while (b >= mod)
-            {
-                b /= mod;
-                i++;
-            }
-            return b + units[i];
-
-        }
         public override void ProcessActivity(WebRequest request, WebResponse response)
         {
-
-            var appId = WebResource.Instance().Provider["appId"];
-            if (String.Equals(request.SendValue, "Check"))
-            {
-                if (String.IsNullOrEmpty(appId))
-                {
-                    response.Redirect(request.Model, request.Command, new Web.UIConfirmDialog("当前应用未注册，请完成登记注册")
-                    {
-                        Title = "应用注册",
-                        DefaultValue = "Select"
-                    });
-                }
-                return;
-            }
 
             if (request.IsMaster == false)
             {
                 this.Prompt("只有管理员才能管理注册信息");
             }
 
+            var appId = WebResource.Instance().Provider["appId"];
             var secret = WebResource.Instance().Provider["appSecret"];
 
             var model = Web.UIDialog.AsyncDialog(this.Context, "Model", d =>
@@ -56,49 +33,107 @@ namespace UMC.Web.Activity
                      return this.DialogValue("Select");
 
                  }
-                 var form = request.SendValues ?? new WebMeta();
-                 if (form.ContainsKey("limit") == false)
-                 {
-                     this.Context.Send(new UISectionBuilder(request.Model, request.Command)
-                         .RefreshEvent("License")
-                         .Builder(), true);
-
-                 }
-
                  if (String.IsNullOrEmpty(secret))
                  {
                      this.Prompt("效验码不存在");
                  }
-                 var webr4 = new Uri(String.Format("https://api.365lu.cn/{0}/Transfer", Utility.Parse36Encode(Utility.Guid(appId).Value))).WebRequest();
-                 HotCache.Sign(webr4, new System.Collections.Specialized.NameValueCollection(), secret);
+                 var form = request.SendValues ?? new WebMeta();
+                 if (form.ContainsKey("limit") == false)
+                 {
+                     this.Context.Send(new UISectionBuilder(request.Model, request.Command)
+                         .RefreshEvent("License").CloseEvent("noLicense")
+                         .Builder(), true);
+
+                 }
+
+                 var webr2 = new Uri(APIProxy.Uri, "Transfer").WebRequest();
+                 APIProxy.Sign(webr2, new System.Collections.Specialized.NameValueCollection(), secret);
 
                  var ui = UISection.Create(new UITitle("授权信息"));
-                 var meta = JSON.Deserialize<WebMeta>(webr4.Get().ReadAsString());
+                 var xhr = webr2.Get();
+
+                 switch (xhr.StatusCode)
+                 {
+                     case System.Net.HttpStatusCode.Unauthorized:
+                     case System.Net.HttpStatusCode.Forbidden:
+                         this.Context.Send("noLicense", false);
+                         response.Redirect(request.Model, request.Command, new UIConfirmDialog("检验不通过或注册信息有误,请从新注册") { DefaultValue = "Select" });
+
+                         break;
+                 }
+                 var meta = JSON.Deserialize<WebMeta>(xhr.ReadAsString()) ?? new WebMeta();
 
 
-                 ui.AddCell("联系人", meta["contact"], new UIClick(new WebMeta(d, "Contact")).Send(request.Model, request.Command))
-                 .AddCell("联系电话", meta["tel"], new UIClick(new WebMeta(d, "Tel")).Send(request.Model, request.Command))
+                 ui.AddCell("主体名称", meta["caption"], new UIClick(new WebMeta(d, "Name")).Send(request.Model, request.Command))
+                  .AddCell("主体所在地", meta["address"], new UIClick(new WebMeta(d, "Address")).Send(request.Model, request.Command));
+
+
+                 ui.NewSection().AddCell("联系人", meta["contact"], new UIClick(new WebMeta(d, "Name")).Send(request.Model, request.Command))
+                 .AddCell("联系电话", meta["tel"], new UIClick(new WebMeta(d, "Name")).Send(request.Model, request.Command))
                  .AddCell("电子邮件", meta["email"], new UIClick(new WebMeta(d, "Email")).Send(request.Model, request.Command));
-
-                 ui.NewSection().AddCell("主体名称", meta["caption"], new UIClick(new WebMeta(d, "Name")).Send(request.Model, request.Command))
-                 .AddCell("主体所在地", meta["address"], new UIClick(new WebMeta(d, "Address")).Send(request.Model, request.Command));
 
                  var skey = meta["key"];
                  var domain = meta["domain"];
 
-                 ui.NewSection().AddCell("穿透域名", meta["domain"], new UIClick(new WebMeta(d, "Domain")).Send(request.Model, request.Command));
 
-                 ui.NewSection().AddCell("剩余流量", GetSize(Convert.ToInt64(meta["allowSize"])))
-                 .AddCell("上行流量", GetSize(Convert.ToInt64(meta["inputSize"])))
-                 .AddCell("下行流量", GetSize(Convert.ToInt64(meta["outputSize"])));
 
-                 ui.NewSection().AddCell("授权版本", meta.ContainsKey("enterprise") ? "企业版" : "个人版");
+                 //ui.NewSection().AddCell("VPN域名", meta["domain"]).AddCell("VPN流量", meta["allowSize"])
+                 //   .AddCell("流量过期", meta["expireTime"]);
+                 var p = Assembly.GetEntryAssembly().GetCustomAttributes().First(r => r is System.Reflection.AssemblyInformationalVersionAttribute) as System.Reflection.AssemblyInformationalVersionAttribute;
+
+
+                 var now = Utility.TimeSpan();
+
+
+                 var vL = 0;
+                 var lui = ui.NewSection();
+                 var IsHave = false;
+
+                 var apps = meta.GetDictionary()["apps"] as Array;
+                 var cl = apps?.Length;
+                 for (var i = 0; i < cl; i++)
+                 {
+                     var hash = apps.GetValue(i) as System.Collections.Hashtable;
+                     var ExpireTime = Utility.IntParse(hash["Expire"].ToString(), 0);
+                     var Quantity = Utility.IntParse(hash["Quantity"].ToString(), 0);
+                     if (Quantity > 0)
+                     {
+
+                         if (ExpireTime > now)
+                         {
+                             lui.AddCell('\uf09c', $"包含{Quantity}个应用许可证", $"还剩{new TimeSpan(0, 0, ExpireTime - now).TotalDays:0.00}天");
+                             vL += Quantity;
+                             IsHave = true;
+                         }
+                         else if (ExpireTime < 10)
+                         {
+                             lui.AddCell('\uf23e', $"{ExpireTime}年期预许可", $"{Quantity}个");
+                             IsHave = true;
+
+                         }
+
+                     }
+                 }
+
+                 if (IsHave)
+                 {
+                     lui.AddCell('\uf084', "有效应用数", $"{vL}个").NewSection().AddCell("运行版本", p.InformationalVersion);
+
+                 }
+                 else
+                 {
+                     lui.Add("Desc", new UMC.Web.WebMeta().Put("desc", "还未有应用许可,请去获得许可").Put("icon", "\uea05"), new UMC.Web.WebMeta().Put("desc", "{icon}\n{desc}"),
+
+                    new UIStyle().Align(1).Color(0xaaa).Padding(20, 20).BgColor(0xfff).Size(12).Name("icon", new UIStyle().Font("wdk").Size(60)));
+                     ui.NewSection().AddCell("运行版本", p.InformationalVersion);
+
+                 }
 
 
 
                  ui.UIFootBar = new UIFootBar() { IsFixed = true };
-                 ui.UIFootBar.AddText(new UIEventText("重置授权码").Click(new UIClick(new WebMeta(d, "License")).Send(request.Model, request.Command)),
-                     new UIEventText("流量充值").Click(new UIClick(new WebMeta(d, "Recharge")).Send(request.Model, request.Command)).Style(new UIStyle().BgColor()));
+                 ui.UIFootBar.AddText(new UIEventText("重置授权码").Click(new UIClick(new WebMeta(d, "Select")).Send(request.Model, request.Command)),
+                     new UIEventText("去获得许可").Click(new UIClick(new WebMeta(d, "Recharge")).Send(request.Model, request.Command)).Style(new UIStyle().BgColor()));
                  response.Redirect(ui);
 
                  return this.DialogValue("none");
@@ -106,44 +141,32 @@ namespace UMC.Web.Activity
             switch (model)
             {
                 case "Select":
-                    var ls = new UISheetDialog() { Title = "注册登记" };
-                    ls.Options.Add(new UIClick("Register") { Text = "我没有授权码" }.Send(request.Model, request.Command));
-                    ls.Options.Add(new UIClick("License") { Text = "我已有授权码" }.Send(request.Model, request.Command));
+                    var ls = new UISheetDialog() { Title = "注册登记" }
+                    .Put("我没有授权码", "Register")
+                    .Put("我已有授权码", "License");
                     response.Redirect(request.Model, request.Command, ls);
 
                     break;
                 case "Register":
                     {
-
-                        var register = this.AsyncDialog(g =>
-                        {
-                            var fm = new UMC.Web.UIFormDialog() { Title = "登记注册" };
-                            fm.AddText("联系人", "Contact", String.Empty).Put("placeholder", "联系人真实人名");
-                            fm.AddPhone("联系电话", "Tel", String.Empty);
-                            fm.AddText("电子邮件", "Email", String.Empty).Put("placeholder", "建议联系人QQ邮箱");
-                            fm.AddText("主体名称", "Name", String.Empty).PlaceHolder("所属公司或门店名称");
-
-                            fm.AddOption("主体所在地", "Address", String.Empty, String.Empty).PlaceHolder("公司或门店地址")
-                            .Command("Settings", "Area");
-                            fm.Submit("确认注册", request, "License");
-                            return fm;
-                        }, "Setings");
-                        var rwebr = new Uri("https://api.365lu.cn/Register").WebRequest();
+                        var token = UMC.Data.Utility.Guid(this.Context.Token.Device.Value);
+                        var rwebr = new Uri(APIProxy.Uri, "/Register").WebRequest();
                         rwebr.Headers.Add("umc-client-pfm", "sync");
-                        var resp = rwebr.Post(register);
+                        var p = Assembly.GetEntryAssembly().GetCustomAttributes().First(r => r is System.Reflection.AssemblyInformationalVersionAttribute) as System.Reflection.AssemblyInformationalVersionAttribute;
+
+                        rwebr.Headers.Add("umc-app-version", p.InformationalVersion);
+                        var resp = rwebr.Post(new WebMeta().Put("token", token));
+
                         if (resp.StatusCode == System.Net.HttpStatusCode.OK)
                         {
                             var meta = JSON.Deserialize<WebMeta>(resp.ReadAsString());
-                            if (meta.ContainsKey("msg"))
-                            {
-                                this.Prompt(meta["msg"]);
-                            }
+
                             if (meta.ContainsKey("success"))
                             {
                                 var provider = UMC.Data.WebResource.Instance().Provider;
                                 var pc = Reflection.Configuration("assembly") ?? new ProviderConfiguration();
-                                pc.Providers["WebResource"] = provider;
-                                provider.Attributes["host"] = meta["domain"];
+                                pc.Add(provider);
+                                provider.Attributes["domain"] = meta["domain"];
                                 provider.Attributes["appSecret"] = meta["appSecret"];
                                 provider.Attributes["appId"] = meta["appId"];
                                 var union = meta["union"] as string;
@@ -151,14 +174,78 @@ namespace UMC.Web.Activity
                                 {
                                     provider.Attributes["union"] = union;
                                 }
-                                pc.WriteTo(UMC.Data.Reflection.AppDataPath("UMC//assembly.xml"));
-                                this.Prompt("授权成功", "登记成功，个人版授权已成功，权益请参考个人版说明", false);
-                                this.Context.Send("License", true);
+                                Reflection.Configuration("assembly", pc);
+                                this.Prompt("注册登记成功", false);
+                                this.Context.Send("License", false);
+
+                                this.Context.Send(new UISectionBuilder(request.Model, request.Command)
+                                    .RefreshEvent("License")
+                                    .Builder(), true);
+
+                            }
+                            else if (meta.ContainsKey("url"))
+                            {
+                                var Config = this.AsyncDialog("Config", g =>
+                                {
+                                    var fm = new UIFormDialog() { Title = "应用登记" };
+                                    fm.AddImage(new Uri(UMC.Data.Utility.QRUrl(meta["url"])));
+
+                                    fm.AddConfirm(meta["desc"] ?? "请用微信扫一扫上图二维码，完成登记授权", "token", token);
+
+                                    fm.Submit("下一步", "License");
+                                    fm.AddPrompt(meta["tip"] ?? "当在微信中完成登记时，请点击“下一步”，完成登记信息同步");
+                                    return fm;
+                                });
+                                if (meta.ContainsKey("msg"))
+                                {
+                                    this.Prompt(meta["msg"]);
+                                }
+
+                            }
+                            else if (meta.ContainsKey("msg"))
+                            {
+                                this.Prompt(meta["msg"]);
                             }
                         }
                         else
                         {
-                            this.Prompt("网络异常，请确认网络连接");
+                            this.Prompt("注册时通信异常");
+                        }
+                    }
+                    break;
+                case "Contact":
+                    {
+                        var rwebr = new Uri(APIProxy.Uri, "/Register").WebRequest();
+                        rwebr.Headers.Add("umc-client-pfm", "sync");
+                        var p = Assembly.GetEntryAssembly().GetCustomAttributes().First(r => r is System.Reflection.AssemblyInformationalVersionAttribute) as System.Reflection.AssemblyInformationalVersionAttribute;
+
+                        rwebr.Headers.Add("umc-app-version", p.InformationalVersion);
+                        var xhr = rwebr.Post(new WebMeta().Put("Contact", true));
+
+                        switch (xhr.StatusCode)
+                        {
+                            case System.Net.HttpStatusCode.OK:
+
+                                var data = JSON.Deserialize<WebMeta>(xhr.ReadAsString()) ?? new WebMeta();
+
+                                var Config = this.AsyncDialog("Contact", g =>
+                                {
+                                    var fm = new UIFormDialog() { Title = "联系官方" };
+
+                                    var dd = data["DD"];
+
+                                    fm.AddImage(new Uri(data["WeiXin"]));
+                                    //fm.AddPrompt("用微信扫一扫");
+
+                                    fm.Submit("用微信扫一扫");
+                                    fm.Add(UICell.UI("用钉钉联系", "", new UIClick($"dingtalk://dingtalkclient/action/sendmsg?dingtalk_id={dd}") { Key = "Url" }));
+
+
+                                    return fm;
+                                });
+                                break;
+                            default:
+                                break;
                         }
                     }
                     break;
@@ -171,7 +258,8 @@ namespace UMC.Web.Activity
                             var fm = new UIFormDialog() { Title = "应用授权" };
                             fm.AddText("授权码", "appId", String.Empty);
                             fm.AddText("检验码", "appSecret", "");
-                            fm.Submit("确认授权", request, "License");
+
+                            fm.Submit("确认授权", "License");
                             return fm;
                         });
                         var appId2 = Utility.Guid(Config["appId"]);
@@ -179,17 +267,18 @@ namespace UMC.Web.Activity
                         {
                             this.Prompt("不存在此标识码格式");
                         }
-                        var webR = new Uri(String.Format("https://api.365lu.cn/{0}/Transfer/", Utility.Parse36Encode(appId2.Value))).WebRequest();
+                        var webR = new Uri(APIProxy.Uri, $"/{Utility.Parse36Encode(appId2.Value)}/Transfer/").WebRequest();
 
-                        HotCache.Sign(webR, new System.Collections.Specialized.NameValueCollection(), Config["appSecret"]);
+                        APIProxy.Sign(webR, new System.Collections.Specialized.NameValueCollection(), Config["appSecret"]);
 
                         var resp = webR.Get();
                         if (resp.StatusCode == System.Net.HttpStatusCode.OK)
                         {
                             var con = UMC.Data.JSON.Deserialize(resp.ReadAsString()) as Hashtable;
                             var pc = Reflection.Configuration("assembly") ?? new ProviderConfiguration();
-                            pc.Providers["WebResource"] = UMC.Data.WebResource.Instance().Provider;
-                            provider.Attributes["host"] = con["domain"] as string;
+                            pc.Add(provider);
+
+                            provider.Attributes["domain"] = con["domain"] as string;
                             provider.Attributes["appSecret"] = Config["appSecret"];
                             provider.Attributes["appId"] = con["appId"] as string;
                             var union = con["union"] as string;
@@ -197,9 +286,13 @@ namespace UMC.Web.Activity
                             {
                                 provider.Attributes["union"] = union;
                             }
+                            Reflection.Configuration("assembly", pc);
+                            this.Prompt("注册登记成功", false);
+                            this.Context.Send("License", false);
 
-                            pc.WriteTo(UMC.Data.Reflection.AppDataPath("UMC//assembly.xml"));
-                            this.Context.Send("License", true);
+                            this.Context.Send(new UISectionBuilder(request.Model, request.Command)
+                                .RefreshEvent("License")
+                                .Builder(), true);
                         }
                         else
                         {
@@ -214,9 +307,8 @@ namespace UMC.Web.Activity
             {
                 this.Prompt("效验码不存在");
             }
-            var webr = new Uri(String.Format("https://api.365lu.cn/{0}/Transfer", Utility.Parse36Encode(Utility.Guid(appId).Value))).WebRequest();
-
-            HotCache.Sign(webr, new System.Collections.Specialized.NameValueCollection(), secret);
+            var webr = new Uri(APIProxy.Uri, "Transfer").WebRequest();
+            APIProxy.Sign(webr, new System.Collections.Specialized.NameValueCollection(), secret);
 
             var applyS = this.AsyncDialog(g =>
             {
@@ -225,49 +317,54 @@ namespace UMC.Web.Activity
                 var fm = new UMC.Web.UIFormDialog() { Title = "授权信息" };
                 switch (model)
                 {
-                    case "Contact":
-                        fm.AddText("联系人", "Contact", meta["contact"]).Put("placeholder", "联系人真实人名");
-                        break;
-                    case "Tel":
-                        fm.AddPhone("联系电话", "Tel", meta["tel"]);
+                    default:
+                    case "Name":
+                        fm.Title = "主体登记";
+                        fm.AddText("主体名称", "Name", meta["caption"]).PlaceHolder("所属公司或门店名称");
+                        fm.AddText("联系人姓名", "Contact", meta["contact"]).Put("placeholder", "联系人真实人名");
+                        fm.AddPhone("手机号码", "Tel", meta["tel"]).Put("placeholder", "真实的手机号码");
                         break;
                     case "Email":
+                        fm.Title = "主体登记";
                         fm.AddText("电子邮件", "Email", meta["email"]).Put("placeholder", "建议联系人QQ邮箱");
                         break;
-                    case "Name":
-                        fm.AddText("主体名称", "Name", meta["caption"]).PlaceHolder("所属公司或门店名称");
-                        break;
                     case "Address":
+                        fm.Title = "主体登记";
                         fm.AddOption("主体所在地", "Address", meta["address"], meta["address"]).PlaceHolder("公司或门店地址")
                         .Command("Settings", "Area");
                         break;
-                    case "Domain":
-                        fm.AddText("穿透域名", "Domain", String.Empty).PlaceHolder("只支持 0-9a-z");
-                        break;
                     case "Recharge":
-                        fm.Title = "流量充值";
-                        if (meta.ContainsKey("recharge"))
+
+                        var data = JSON.Deserialize<System.Collections.Hashtable>(webr.Post(new WebMeta().Put("type", "App")).ReadAsString());
+
+                        request.Arguments["API"] = data["src"] as string;
+                        var Combo = data["Combo"] as Array;
+
+                        fm.Title = "获取许可";
+                        var style = new UIStyle();
+                        style.Name("icon").Color(0x09bb07).Size(84).Font("wdk");
+                        style.Name("title").Color(0x333).Size(20);
+                        style.BgColor(0xfafcff).Height(200).AlignCenter();
+                        var desc = new UMC.Web.WebMeta().Put("title", "应用许可").Put("icon", "\uea04");
+                        fm.Config.Put("Header", new UIHeader().Desc(desc, "{icon}\n{title}", style));
+                        var qty = this.AsyncDialog("Qty", "1");
+                        var f = fm.AddRadio("单应用套餐", "Combo");
+                        var cl = Combo.Length;
+                        for (var i = 0; i < cl; i++)
                         {
-                            fm.AddImage(new Uri(meta["recharge"]));
-                            fm.AddPrompt(meta["rechargeText"] ?? "请用支付宝或微信扫一扫，完成充值");
-                            fm.Submit("关闭");//, request, "License");
-                            return fm;
+                            var hash = Combo.GetValue(i) as System.Collections.Hashtable;
+                            f.Put(hash["Text"] as string, hash["Value"] as string, i == cl - 1);
                         }
-                        else
-                        {
-                            this.Prompt("充值提示", "目前不支持在线充值，请联系渠道经销商");
-                        }
-                        break;
-                    case "Version":
-                        this.Prompt("授权版本", "版本差异，请在“云桌面--帮助文档--版本差异”中查看。");
-                        break;
-                    default:
-                        this.Prompt("不支持此设置");
-                        break;
+
+                        fm.AddNumber("应用数量", "Quantity", qty).Put("Compare", "GreaterEqual", "For", qty);
+                        fm.Config.Put("Action", true);
+
+                        fm.Submit("确认去购买");
+                        return fm;
 
                 }
 
-                fm.Submit("确认提交", request, "License");
+                fm.Submit("确认提交", "License");
                 return fm;
             }, "Setings");
             switch (model)
@@ -290,38 +387,17 @@ namespace UMC.Web.Activity
                         }
                     }
                     break;
-                case "Domain":
+                case "Recharge":
+
+                    var src = this.AsyncDialog("API", r =>
                     {
-                        var pDomain = applyS["Domain"];
-                        if (System.Text.RegularExpressions.Regex.IsMatch(pDomain, "^[\\da-z]+$") == false)
-                        {
-                            this.Prompt("穿透域名只支持数字和小写字母");
+                        var appId = WebResource.Instance().Provider["appId"];
+                        return this.DialogValue($"https://api.apiumc.com/UMC/Platform/Alipay/App?AuthKey={appId}");
 
-                        }
-                        var webr2 = new Uri(HotCache.Uri, $"Transfer?Domain={pDomain}").WebRequest();
-
-                        var ns2 = new System.Collections.Specialized.NameValueCollection();
-
-                        HotCache.Sign(webr2, ns2, secret);
-                        var meta = JSON.Deserialize<WebMeta>(webr.Get().ReadAsString());
-                        if (meta.ContainsKey("msg"))
-                        {
-                            this.Prompt(meta["msg"]);
-                        }
-                        var provider = Data.WebResource.Instance().Provider;
-
-                        var pc = Reflection.Configuration("assembly") ?? new ProviderConfiguration(); ;
-                        provider.Attributes["host"] = meta["domain"];
-                        var union = meta["union"] as string;
-                        if (String.IsNullOrEmpty(union) == false)
-                        {
-                            provider.Attributes["union"] = union;
-                        }
-                        pc.Providers["WebResource"] = provider;
-                        UMC.Data.DataFactory.Instance().Configuration("assembly", pc);
-                        this.Context.Send("License", true);
-                    }
-
+                    });
+                    var ComboValue = applyS["Combo"];
+                    var Quantity = applyS["Quantity"];
+                    response.Redirect(new Uri($"{src}&Combo={ComboValue}&Quantity={Quantity}"));
                     break;
             }
 

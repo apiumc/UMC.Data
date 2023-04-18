@@ -1,79 +1,78 @@
-﻿<link href="//www.365lu.cn/css/umc.css" rel="stylesheet" type="text/css" />
-<script src="//www.365lu.cn/js/umc.date.js"></script>
-<script src="//www.365lu.cn/js/umc.database.js"></script>
-<script src="//www.365lu.cn/js/umc.grid.js"></script>
-<script src="//www.365lu.cn/js/umc.dialog.js"></script>
-<script src="//www.365lu.cn/js/umc.ui.js"></script>
-<script src="//www.365lu.cn/js/umc.page.js"></script>
-<script src="//www.365lu.cn/js/umc.paging.js"></script>
-<script src="//www.365lu.cn/js/umc.app.js"></script>
+﻿<!doctype html>
+<html>
+
+<head>
+    <title>API UMC</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <link href="/css/weui.css" rel="stylesheet" type="text/css" />
+    <link href="/css/base.css" rel="stylesheet" type="text/css" />
+    <link href="/css/icon.css" rel="stylesheet" type="text/css" />
+    <link href="/css/umc.ui.css" rel="stylesheet" type="text/css" />
+    <link href="/css/umc.css" rel="stylesheet" type="text/css" />
 
 
-<script>
+    <!--   API UMC采用的动静分离策略，让资源性请求不再占用业务服务器性能，所有您可以把html js css image下载下来,单独部署，完全可以部署在阿里云的OSS、腾讯的COS、百度的BOS上
+              -->
+    <script src="/js/umc.js"></script>
+    <script src="/js/umc.date.js"></script>
+    <script src="/js/umc.database.js"></script>
+    <script src="/js/umc.grid.js"></script>
+    <script src="/js/umc.dialog.js"></script>
+    <script src="/js/umc.ui.js"></script>
+    <script src="/js/umc.page.js"></script>
+    <script src="/js/umc.paging.js"></script>
+    <script src="/js/umc.app.js"></script>
 
-    ($ => {
-        $.Src = '//www.365lu.cn/v0.1/';
-        function page(v) {
-            return function (root) {
-                $('.pagination-container', root).paging(v.model, v.cmd, $('table tbody', root)).on('sort', root.find('.el-sort'));
-                $('table', root).thead();
-            }
-        };
-        $.page('debug', '开发调试', false);
-        $.UI.On('Setup', function () {
 
-            $.page('debug', 'API UMC安装向导', false);
-
-            var login = $('.login-container');
-            if (login.is('.hide') == false) {
-                login.cls('hide', 1);
-                $(window).on('page', 'debug', '');
-                $('#hamburger-container').click().off('click');
-            }
-
-        }).On('Cashier', function () {
-            $.script([location.origin, '/js/UMC.Conf.js'].join(''))
-                .wait(function () {
-                    $.UI.Command('Account', 'Menu', xhr => {
-                        var ps = $.pages || {};
-                        xhr.forEach(it => {
-                            var menu = it.menu || [];
-                            if (menu.length > 0) {
-                                var mn = $.menu(it.icon, it.text);
-                                menu.forEach(c => {
-                                    var k = c.url.substring(1);
-                                    if (ps[k]) {
-                                        mn.page(k, c.text, page(ps[k]), true);
-
-                                    } else {
-                                        var key = k.substring(0, k.indexOf('/'));
-                                        key ? $.page(key) : 0;
-                                        mn.page(k, c.text, true);
-                                    }
-                                });
-                            } else {
-                                var k = it.url.substring(1);
+    <script>($ => {
+            $.Src = '/v.0.1/';
+            function page(v) {
+                return function (root) {
+                    $('.pagination-container', root).paging(v.model, v.cmd, $('table tbody', root)).on('sort', root.find('.el-sort'));
+                    $('table', root).thead();
+                }
+            };
+            $.page('debug', '开发调试', false);
+            UMC.shift('main', 'debug');
+            $.UI.On('Cashier', function () {
+                $.UI.Command('Account', 'Menu', xhr => {
+                    var ps = $.pages || {};
+                    xhr.forEach(it => {
+                        var menu = it.menu || [];
+                        if (menu.length > 0) {
+                            var mn = $.menu(it.icon, it.text);
+                            menu.forEach(c => {
+                                var k = c.url.substring(1);
                                 if (ps[k]) {
-                                    $.page(k, it.text, page(ps[k]), it.icon);
+                                    mn.page(k, c.text, page(ps[k]), true);
 
                                 } else {
                                     var key = k.substring(0, k.indexOf('/'));
                                     key ? $.page(key) : 0;
-                                    $.page(k, it.text, it.icon);
+                                    mn.page(k, c.text, true);
                                 }
+                            });
+                        } else {
+                            var k = it.url.substring(1);
+                            if (ps[k]) {
+                                $.page(k, it.text, page(ps[k]), it.icon);
 
+                            } else {
+                                var key = k.substring(0, k.indexOf('/'));
+                                key ? $.page(key) : 0;
+                                $.page(k, it.text, it.icon);
                             }
-                        });
-                        $.menu();
-                        $(window).on('popstate');
 
+                        }
                     });
+                    $.menu();
+                    $(window).on('popstate');
+
                 });
 
-        });
-    })(UMC);
-
-</script>
+            });
+        })(UMC);</script>
 </head>
 <body>
     <div role="alert" class="el-message el-message--warning el-message-fade-leave el-message-fade-leave-active" style="z-index: 2100;">
