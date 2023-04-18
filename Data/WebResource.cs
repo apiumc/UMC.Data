@@ -48,18 +48,10 @@ namespace UMC.Data
         {
             return this.Provider["domain"] ?? "localhost";
         }
-        public virtual T Cache<T>(string key)
+        public virtual T Cache<T>(string key) where T : class, new()
         {
 
-            var v = UMC.Data.DataFactory.Instance().Config(key);
-            if (v != null)
-            {
-                var v1 = UMC.Data.JSON.Deserialize<System.Collections.Hashtable>(v.ConfValue);
-                var value = Activator.CreateInstance<T>();
-                Data.Reflection.SetProperty(value, v1);
-                return value;
-            }
-            return default(T);
+           return UMC.Data.JSON.Deserialize<T>( UMC.Data.DataFactory.Instance().Config(key)?.ConfValue); 
         }
         public virtual void Cache<T>(string key, T value)
         {

@@ -123,11 +123,13 @@ namespace UMC.Web.Activity
                  else
                  {
                      lui.Add("Desc", new UMC.Web.WebMeta().Put("desc", "还未有应用许可,请去获得许可").Put("icon", "\uea05"), new UMC.Web.WebMeta().Put("desc", "{icon}\n{desc}"),
-
                     new UIStyle().Align(1).Color(0xaaa).Padding(20, 20).BgColor(0xfff).Size(12).Name("icon", new UIStyle().Font("wdk").Size(60)));
-                     ui.NewSection().AddCell("运行版本", p.InformationalVersion);
+                     // ui.NewSection().AddCell("运行版本", p.InformationalVersion);
 
                  }
+                 ui.NewSection().AddCell("运行版本", p.InformationalVersion)
+                 .NewSection().AddCell("联系官方", "天才工程师为你解答", new UIClick("Contact").Send(request.Model, request.Command));
+
 
 
 

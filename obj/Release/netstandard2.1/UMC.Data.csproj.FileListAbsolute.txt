@@ -11,3 +11,16 @@
 /Users/wushunming/Documents/Static/UMC.Data/bin/Release/netstandard2.1/UMC.dll
 /Users/wushunming/Documents/Static/UMC.Data/bin/Release/netstandard2.1/UMC.pdb
 /Users/wushunming/Documents/Static/UMC.Data/obj/Release/netstandard2.1/UMC.Data.csproj.CopyComplete
+/Users/wushunming/Documents/APIUMC/UMC.Data/bin/Release/netstandard2.1/UMC.Data.deps.json
+/Users/wushunming/Documents/APIUMC/UMC.Data/bin/Release/netstandard2.1/UMC.Data.dll
+/Users/wushunming/Documents/APIUMC/UMC.Data/bin/Release/netstandard2.1/UMC.Data.pdb
+/Users/wushunming/Documents/APIUMC/UMC.Data/bin/Release/netstandard2.1/UMC.dll
+/Users/wushunming/Documents/APIUMC/UMC.Data/bin/Release/netstandard2.1/UMC.pdb
+/Users/wushunming/Documents/APIUMC/UMC.Data/obj/Release/netstandard2.1/UMC.Data.csproj.AssemblyReference.cache
+/Users/wushunming/Documents/APIUMC/UMC.Data/obj/Release/netstandard2.1/UMC.Data.GeneratedMSBuildEditorConfig.editorconfig
+/Users/wushunming/Documents/APIUMC/UMC.Data/obj/Release/netstandard2.1/UMC.Data.AssemblyInfoInputs.cache
+/Users/wushunming/Documents/APIUMC/UMC.Data/obj/Release/netstandard2.1/UMC.Data.AssemblyInfo.cs
+/Users/wushunming/Documents/APIUMC/UMC.Data/obj/Release/netstandard2.1/UMC.Data.csproj.CoreCompileInputs.cache
+/Users/wushunming/Documents/APIUMC/UMC.Data/obj/Release/netstandard2.1/UMC.Data.csproj.CopyComplete
+/Users/wushunming/Documents/APIUMC/UMC.Data/obj/Release/netstandard2.1/UMC.Data.dll
+/Users/wushunming/Documents/APIUMC/UMC.Data/obj/Release/netstandard2.1/UMC.Data.pdb

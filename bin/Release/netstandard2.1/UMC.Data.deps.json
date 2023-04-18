@@ -7,15 +7,15 @@
   "targets": {
     ".NETStandard,Version=v2.1": {},
     ".NETStandard,Version=v2.1/": {
-      "UMC.Data/1.0.33": {
+      "UMC.Data/1.0.34": {
         "dependencies": {
-          "UMC": "1.0.27"
+          "UMC": "1.0.28"
         },
         "runtime": {
           "UMC.Data.dll": {}
         }
       },
-      "UMC/1.0.27": {
+      "UMC/1.0.28": {
         "runtime": {
           "UMC.dll": {}
         }
@@ -23,12 +23,12 @@
     }
   },
   "libraries": {
-    "UMC.Data/1.0.33": {
+    "UMC.Data/1.0.34": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "UMC/1.0.27": {
+    "UMC/1.0.28": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
